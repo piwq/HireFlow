@@ -35,6 +35,16 @@ async def create_application(
     if not profile:
         raise HTTPException(status_code=400, detail="Complete your profile first")
 
+    # Check if application already exists
+    existing_app = await db.execute(
+        select(Application).where(
+            Application.candidate_id == profile.id,
+            Application.vacancy_id == body.vacancy_id
+        )
+    )
+    if existing_app.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="You have already applied for this vacancy")
+
     app = Application(candidate_id=profile.id, vacancy_id=body.vacancy_id)
     db.add(app)
     await db.commit()

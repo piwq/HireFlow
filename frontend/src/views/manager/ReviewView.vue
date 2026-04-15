@@ -2,6 +2,21 @@
 import { ref, onMounted, computed } from 'vue'
 import api from '@/api/index.js'
 import AppLayout from '@/components/AppLayout.vue'
+import { 
+  Video, 
+  MessageSquare, 
+  Calendar, 
+  User, 
+  Mail, 
+  Search, 
+  Loader2, 
+  Check, 
+  MoreHorizontal,
+  X,
+  FileText,
+  Briefcase,
+  ChevronDown
+} from 'lucide-vue-next'
 
 const interviews = ref([])
 const candidates = ref([])
@@ -94,6 +109,7 @@ async function submitFeedback(interview) {
     await api.post('/feedbacks/', { interview_id: interview.id, text })
     submitted.value[interview.id] = true
     feedbackText.value[interview.id] = ''
+    setTimeout(() => { submitted.value[interview.id] = false }, 3000)
   } catch {}
 }
 
@@ -107,110 +123,136 @@ function formatDate(dt) {
 </script>
 
 <template>
-  <AppLayout>
-    <div class="p-6 max-w-3xl">
-      <!-- Page header -->
-      <div class="mb-6">
-        <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100">Собеседования</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Управляйте собеседованиями и оставляйте отзывы</p>
+  <div class="p-4 md:p-8 max-w-4xl mx-auto bg-brand-light-base dark:bg-brand-dark-base min-h-full antialiased">
+    <!-- Page header -->
+    <div class="mb-8 md:mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <h1 class="text-2xl md:text-display text-brand-light-primary dark:text-brand-dark-primary flex items-center gap-3">
+          <Calendar class="w-7 h-7 text-brand-status-interview" />
+          Собеседования
+        </h1>
+        <p class="text-sm md:text-body text-brand-light-secondary dark:text-brand-dark-secondary mt-1">Оценивайте кандидатов и оставляйте профессиональный фидбек</p>
       </div>
-
-      <div v-if="loading" class="flex items-center gap-2 text-slate-400 py-6">
-        <span class="animate-spin">⟳</span> Загружаю...
+      
+      <div class="flex items-center gap-2 px-4 py-2 bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border rounded-xl self-start md:self-auto">
+        <div class="w-2 h-2 rounded-full bg-brand-status-interview animate-pulse"></div>
+        <span class="text-[10px] md:text-caption text-brand-light-primary dark:text-brand-dark-primary font-bold uppercase tracking-widest">Active session</span>
       </div>
+    </div>
 
+    <div v-if="loading" class="flex flex-col items-center justify-center py-20 gap-4 text-brand-light-muted">
+      <Loader2 class="w-10 h-10 animate-spin text-brand-status-interview" />
+      <p class="text-body font-medium">Синхронизация данных...</p>
+    </div>
+
+    <div v-else class="space-y-10">
       <!-- Pending scheduling -->
-      <div v-if="pendingApps.length" class="mb-6">
-        <h2 class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">
+      <section v-if="pendingApps.length">
+        <h2 class="text-heading text-brand-light-primary dark:text-brand-dark-primary flex items-center gap-2 mb-4 px-2">
+          <div class="w-1.5 h-6 bg-brand-status-screening rounded-full"></div>
           Ожидают назначения
         </h2>
-        <div class="space-y-2">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div
             v-for="app in pendingApps"
             :key="app.id"
-            class="bg-white dark:bg-[#151827] rounded-xl border border-slate-200 dark:border-[#2A2F4A] p-4 flex items-center justify-between gap-4"
+            class="bg-brand-light-surface dark:bg-brand-dark-surface rounded-2xl border border-brand-light-border dark:border-brand-dark-border p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm hover:shadow-md transition-shadow"
           >
             <div class="flex items-center gap-3 min-w-0">
-              <div class="w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center shrink-0">
-                <span class="text-violet-600 dark:text-violet-400 text-xs font-bold">
+              <div class="w-10 h-10 rounded-xl bg-brand-status-interview/10 flex items-center justify-center shrink-0">
+                <span class="text-brand-status-interview text-sm font-bold">
                   {{ initials(candidateForApp(app)?.full_name) }}
                 </span>
               </div>
               <div class="min-w-0">
-                <p class="font-semibold text-sm text-slate-800 dark:text-slate-200 truncate">
+                <p class="font-bold text-sm text-brand-light-primary dark:text-brand-dark-primary truncate">
                   {{ candidateForApp(app)?.full_name || 'Кандидат' }}
                 </p>
-                <p class="text-xs text-slate-400 dark:text-slate-500 truncate">
+                <p class="text-micro text-brand-light-secondary dark:text-brand-dark-secondary truncate flex items-center gap-1 mt-0.5">
+                  <Mail class="w-3 h-3" />
                   {{ candidateForApp(app)?.email }}
                 </p>
               </div>
             </div>
             <button
               @click="openSchedule(app)"
-              class="shrink-0 px-3.5 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition shadow-sm shadow-violet-500/20"
+              class="w-full sm:w-auto shrink-0 px-4 py-2 bg-brand-status-interview hover:opacity-90 text-white text-micro font-bold rounded-xl transition shadow-lg shadow-brand-status-interview/20 uppercase tracking-tighter"
             >
               Назначить
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
       <!-- Scheduled interviews -->
-      <div>
-        <h2 class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">
-          Запланированные собеседования
+      <section>
+        <h2 class="text-heading text-brand-light-primary dark:text-brand-dark-primary flex items-center gap-2 mb-4 px-2">
+          <div class="w-1.5 h-6 bg-brand-status-interview rounded-full"></div>
+          Расписание
         </h2>
 
-        <div v-if="!interviews.length && !loading" class="bg-white dark:bg-[#151827] rounded-xl border border-slate-200 dark:border-[#2A2F4A] p-8 text-center">
-          <p class="text-slate-400 dark:text-slate-500 text-sm">Нет запланированных собеседований</p>
+        <div v-if="!interviews.length" class="bg-brand-light-surface dark:bg-brand-dark-surface rounded-3xl border border-brand-light-border dark:border-brand-dark-border p-8 md:p-12 text-center">
+          <div class="w-16 h-16 bg-brand-light-base dark:bg-brand-dark-base rounded-2xl flex items-center justify-center mx-auto mb-4 border border-brand-light-border dark:border-brand-dark-border">
+            <Calendar class="w-8 h-8 text-brand-light-muted" />
+          </div>
+          <p class="text-body text-brand-light-secondary dark:text-brand-dark-secondary font-medium">На сегодня встреч не запланировано</p>
+          <p class="text-micro text-brand-light-muted mt-1">Как только HR назначит время, оно появится здесь</p>
         </div>
 
-        <div class="space-y-4">
+        <div class="space-y-6">
           <div
             v-for="interview in interviews"
             :key="interview.id"
-            class="bg-white dark:bg-[#151827] rounded-2xl border border-slate-200 dark:border-[#2A2F4A] shadow-sm overflow-hidden"
+            class="bg-brand-light-surface dark:bg-brand-dark-surface rounded-3xl border border-brand-light-border dark:border-brand-dark-border shadow-2xl shadow-brand-accent/5 overflow-hidden group hover:border-brand-status-interview/50 transition-colors"
           >
             <!-- Interview header -->
-            <div class="p-5 flex items-start justify-between gap-4">
-              <div class="flex items-center gap-3 min-w-0">
-                <div class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-950/50 flex items-center justify-center shrink-0">
-                  <span class="text-indigo-600 dark:text-indigo-400 text-sm font-bold">
+            <div class="p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div class="flex items-center gap-4 min-w-0">
+                <div class="w-12 h-12 rounded-2xl bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-center shrink-0">
+                  <span class="text-brand-accent text-base font-bold">
                     {{ initials(candidateForInterview(interview)?.full_name) }}
                   </span>
                 </div>
                 <div class="min-w-0">
-                  <p class="font-semibold text-slate-800 dark:text-slate-200">
-                    {{ candidateForInterview(interview)?.full_name || 'Кандидат' }}
-                  </p>
-                  <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                    {{ candidateForInterview(interview)?.email }}
-                  </p>
-                  <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                    📅 {{ formatDate(interview.scheduled_at) }}
-                  </p>
+                  <div class="flex items-center gap-2">
+                    <h4 class="font-bold text-brand-light-primary dark:text-brand-dark-primary truncate">
+                      {{ candidateForInterview(interview)?.full_name || 'Кандидат' }}
+                    </h4>
+                    <span class="text-[10px] bg-brand-status-interview/10 text-brand-status-interview px-2 py-0.5 rounded font-bold uppercase tracking-tighter">Live</span>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
+                    <p class="text-caption text-brand-light-secondary dark:text-brand-dark-secondary flex items-center gap-1.5 truncate">
+                      <Mail class="w-3.5 h-3.5" />
+                      {{ candidateForInterview(interview)?.email }}
+                    </p>
+                    <p class="text-caption text-brand-status-interview font-bold flex items-center gap-1.5">
+                      <Calendar class="w-3.5 h-3.5" />
+                      {{ formatDate(interview.scheduled_at) }}
+                    </p>
+                  </div>
                 </div>
               </div>
               <button
                 @click="toggleJitsi(interview.id)"
                 :class="[
-                  'shrink-0 flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg transition shadow-sm',
+                  'w-full md:w-auto shrink-0 flex items-center justify-center gap-2.5 px-6 py-3 text-sm md:text-body font-bold rounded-2xl transition-all shadow-lg',
                   jitsiOpen[interview.id]
-                    ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-                    : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20'
+                    ? 'bg-brand-light-elevated dark:bg-brand-dark-elevated text-brand-light-primary dark:text-brand-dark-primary'
+                    : 'bg-brand-accent hover:opacity-90 text-white shadow-brand-accent/20 active:scale-[0.98]'
                 ]"
               >
-                <span>📹</span>
-                {{ jitsiOpen[interview.id] ? 'Закрыть' : 'Войти в звонок' }}
+                <Video v-if="!jitsiOpen[interview.id]" class="w-5 h-5" />
+                <X v-else class="w-5 h-5" />
+                {{ jitsiOpen[interview.id] ? 'Завершить звонок' : 'Начать собеседование' }}
               </button>
             </div>
 
             <!-- Jitsi iframe -->
-            <div v-if="jitsiOpen[interview.id]" class="border-t border-slate-100 dark:border-slate-800">
+            <div v-if="jitsiOpen[interview.id]" class="border-y border-brand-light-border dark:border-brand-dark-border bg-black">
               <iframe
-                :src="`https://meet.jit.si/hr-platform-${interview.room_code}`"
+                :src="`https://meet.jit.si/hireflow-${interview.room_code}`"
                 allow="camera; microphone; fullscreen; display-capture"
-                class="w-full h-72"
+                class="w-full h-[300px] md:h-[500px]"
                 frameborder="0"
               />
             </div>
@@ -218,88 +260,120 @@ function formatDate(dt) {
             <!-- Skills -->
             <div
               v-if="candidateForInterview(interview)?.skills"
-              class="px-5 py-3 bg-slate-50 dark:bg-[#1E2235]/50 border-t border-slate-100 dark:border-slate-800"
+              class="px-6 py-4 bg-brand-light-elevated/50 dark:bg-brand-dark-elevated/20 border-b border-brand-light-border dark:border-brand-dark-border"
             >
-              <p class="text-xs text-slate-500 dark:text-slate-400">
-                <span class="font-medium text-slate-600 dark:text-slate-300">Навыки:</span>
-                {{ candidateForInterview(interview)?.skills }}
-              </p>
+              <div class="flex items-center gap-2">
+                <FileText class="w-4 h-4 text-brand-light-muted" />
+                <span class="text-caption font-bold text-brand-light-secondary dark:text-brand-dark-secondary uppercase tracking-widest">Core Skills:</span>
+                <div class="flex flex-wrap gap-1.5 ml-2">
+                  <span v-for="skill in candidateForInterview(interview)?.skills.split(',')" :key="skill" class="text-micro bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border px-2 py-0.5 rounded text-brand-light-primary dark:text-brand-dark-primary">
+                    {{ skill.trim() }}
+                  </span>
+                </div>
+              </div>
             </div>
 
             <!-- Feedback -->
-            <div class="px-5 py-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Отзыв о кандидате
+            <div class="p-6 space-y-4">
+              <label class="flex items-center gap-2 text-heading text-brand-light-primary dark:text-brand-dark-primary">
+                <MessageSquare class="w-5 h-5 text-brand-accent" />
+                Заметки и оценка
               </label>
               <textarea
                 v-model="feedbackText[interview.id]"
-                rows="3"
-                placeholder="Опишите впечатление от собеседования..."
-                class="w-full bg-slate-50 dark:bg-[#1E2235] border border-slate-300 dark:border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition resize-none"
+                rows="4"
+                placeholder="Опишите сильные стороны кандидата и ваши рекомендации..."
+                class="w-full bg-brand-light-elevated dark:bg-brand-dark-elevated border border-brand-light-border dark:border-brand-dark-border rounded-2xl px-5 py-4 text-body text-brand-light-primary dark:text-brand-dark-primary placeholder-brand-light-muted dark:placeholder-brand-dark-muted focus:outline-none focus:border-brand-accent focus:ring-4 focus:ring-brand-accent/5 transition-all resize-none"
               />
-              <div class="flex items-center gap-3">
+              <div class="flex items-center justify-between">
                 <button
                   @click="submitFeedback(interview)"
-                  class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition shadow-sm shadow-emerald-500/20"
+                  class="px-8 py-3 bg-brand-status-hired hover:opacity-90 text-white text-body font-bold rounded-xl transition shadow-lg shadow-emerald-500/20 active:scale-[0.98] disabled:opacity-50"
+                  :disabled="!feedbackText[interview.id]?.trim()"
                 >
-                  Сохранить отзыв
+                  Опубликовать отзыв
                 </button>
-                <span v-if="submitted[interview.id]" class="text-emerald-500 text-sm">✓ Отзыв сохранён!</span>
+                <div v-if="submitted[interview.id]" class="flex items-center gap-2 text-emerald-500 font-bold animate-in fade-in slide-in-from-right-4">
+                  <Check class="w-5 h-5" />
+                  ГОТОВО
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
 
-    <!-- Schedule modal -->
+    <!-- Schedule modal - Styled properly -->
     <div
       v-if="showSchedule"
-      class="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4"
+      class="fixed inset-0 bg-brand-dark-base/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       @click.self="showSchedule = false"
     >
-      <div class="bg-white dark:bg-[#1E2235] rounded-2xl border border-slate-200 dark:border-[#2A2F4A] shadow-2xl p-6 w-full max-w-sm">
-        <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100 mb-1">Назначить собеседование</h2>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mb-5">
-          {{ scheduleApp && candidateForApp(scheduleApp)?.full_name }}
-        </p>
-        <div class="space-y-4">
+      <div class="bg-brand-light-surface dark:bg-brand-dark-surface rounded-3xl border border-brand-light-border dark:border-brand-dark-border shadow-2xl p-8 w-full max-w-sm animate-in zoom-in-95 duration-200">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-10 h-10 rounded-xl bg-brand-status-interview/10 flex items-center justify-center">
+            <Calendar class="w-5 h-5 text-brand-status-interview" />
+          </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Дата</label>
+            <h2 class="text-heading text-brand-light-primary dark:text-brand-dark-primary leading-tight">Дата встречи</h2>
+            <p class="text-micro text-brand-light-secondary dark:text-brand-dark-secondary mt-1 font-bold">{{ scheduleApp && candidateForApp(scheduleApp)?.full_name }}</p>
+          </div>
+        </div>
+        
+        <div class="space-y-5">
+          <div class="space-y-2">
+            <label class="text-label text-brand-light-primary dark:text-brand-dark-primary ml-1">Дата</label>
             <input
               v-model="scheduleDate"
               type="date"
-              class="w-full bg-slate-50 dark:bg-[#151827] border border-slate-300 dark:border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition"
+              class="w-full bg-brand-light-elevated dark:bg-brand-dark-elevated border border-brand-light-border dark:border-brand-dark-border rounded-xl px-4 py-3 text-body text-brand-light-primary dark:text-brand-dark-primary focus:outline-none focus:border-brand-status-interview transition-all"
             />
           </div>
-          <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Время</label>
+          <div class="space-y-2">
+            <label class="text-label text-brand-light-primary dark:text-brand-dark-primary ml-1">Время</label>
             <input
               v-model="scheduleTime"
               type="time"
-              class="w-full bg-slate-50 dark:bg-[#151827] border border-slate-300 dark:border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition"
+              class="w-full bg-brand-light-elevated dark:bg-brand-dark-elevated border border-brand-light-border dark:border-brand-dark-border rounded-xl px-4 py-3 text-body text-brand-light-primary dark:text-brand-dark-primary focus:outline-none focus:border-brand-status-interview transition-all"
             />
           </div>
-          <div v-if="scheduleError" class="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-lg px-3.5 py-2.5">
-            <p class="text-red-600 dark:text-red-400 text-sm">{{ scheduleError }}</p>
+          <div v-if="scheduleError" class="flex items-start gap-3 bg-red-500/5 border border-red-500/20 rounded-xl p-4">
+            <X class="w-5 h-5 text-red-500 shrink-0" />
+            <p class="text-caption text-red-500">{{ scheduleError }}</p>
           </div>
         </div>
-        <div class="flex gap-2 mt-5">
+        
+        <div class="flex gap-3 mt-8">
           <button
             @click="showSchedule = false"
-            class="flex-1 py-2.5 border border-slate-300 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+            class="flex-1 py-3 text-body font-bold text-brand-light-secondary dark:text-brand-dark-secondary border border-brand-light-border dark:border-brand-dark-border rounded-xl hover:bg-brand-light-elevated transition-all"
           >
             Отмена
           </button>
           <button
             @click="submitSchedule"
             :disabled="scheduleLoading"
-            class="flex-1 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition shadow-md shadow-violet-500/25"
+            class="flex-2 py-3 bg-brand-status-interview hover:opacity-90 disabled:opacity-60 text-white text-body font-bold rounded-xl transition shadow-lg shadow-brand-status-interview/25 flex items-center justify-center gap-2"
           >
-            {{ scheduleLoading ? 'Создаю...' : 'Назначить' }}
+            <Loader2 v-if="scheduleLoading" class="w-4 h-4 animate-spin" />
+            {{ scheduleLoading ? 'Сохранение...' : 'Назначить' }}
           </button>
         </div>
       </div>
     </div>
-  </AppLayout>
+  </div>
 </template>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #2a2f4a;
+  border-radius: 10px;
+}
+</style>

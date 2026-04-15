@@ -1,11 +1,28 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.js'
 import { useThemeStore } from '@/stores/theme.js'
 import api from '@/api/index.js'
+import { 
+  User, 
+  FileText, 
+  Briefcase, 
+  Plus, 
+  Check, 
+  Loader2, 
+  LogOut, 
+  Sun, 
+  Moon,
+  ExternalLink,
+  Upload,
+  Zap,
+  ChevronDown
+} from 'lucide-vue-next'
 
 const auth = useAuthStore()
 const theme = useThemeStore()
+const router = useRouter()
 
 const form = ref({ full_name: '', skills: '', experience: '', resume_url: '' })
 const fileInput = ref(null)
@@ -36,6 +53,7 @@ async function uploadResume() {
   const file = fileInput.value.files[0]
   if (!file) return
   uploading.value = true
+  error.value = ''
   try {
     const fd = new FormData()
     fd.append('file', file)
@@ -79,156 +97,188 @@ async function applyToVacancy() {
     applying.value = false
   }
 }
+
+function logout() {
+  auth.logout()
+  router.push('/login')
+}
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50 dark:bg-[#0D0F1A]">
-    <!-- Header -->
-    <header class="bg-white dark:bg-[#151827] border-b border-slate-200 dark:border-[#2A2F4A] px-6 py-4 sticky top-0 z-10">
-      <div class="max-w-2xl mx-auto flex items-center justify-between">
-        <div class="flex items-center gap-2.5">
-          <div class="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
-            <span class="text-white text-xs font-bold">H</span>
+  <div class="min-h-screen bg-brand-light-base dark:bg-brand-dark-base antialiased font-sans">
+    <!-- Header — Simple for Candidate -->
+    <header class="bg-brand-light-surface dark:bg-brand-dark-surface border-b border-brand-light-border dark:border-brand-dark-border px-6 py-4 sticky top-0 z-10">
+      <div class="max-w-3xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-brand-accent flex items-center justify-center shadow-lg shadow-brand-accent/30">
+            <Briefcase class="w-5 h-5 text-white" />
           </div>
-          <span class="font-bold text-slate-900 dark:text-slate-100 text-base tracking-tight">HireFlow</span>
-          <span class="text-slate-300 dark:text-slate-700 mx-1">·</span>
-          <span class="text-sm text-slate-500 dark:text-slate-400">Кандидат</span>
+          <div>
+            <h1 class="font-bold text-brand-light-primary dark:text-brand-dark-primary text-lg leading-none">HireFlow</h1>
+            <p class="text-micro text-brand-light-secondary dark:text-brand-dark-secondary mt-0.5 uppercase tracking-wider">Candidate Portal</p>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-3">
           <button
             @click="theme.toggle()"
-            class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm"
+            class="w-9 h-9 rounded-xl flex items-center justify-center text-brand-light-secondary dark:text-brand-dark-secondary hover:text-brand-light-primary dark:hover:text-brand-dark-primary hover:bg-brand-light-elevated dark:hover:bg-brand-dark-elevated transition"
           >
-            {{ theme.dark ? '☀️' : '🌙' }}
+            <Sun v-if="theme.dark" class="w-5 h-5" />
+            <Moon v-else class="w-5 h-5" />
           </button>
+          <div class="h-6 w-px bg-brand-light-border dark:bg-brand-dark-border mx-1"></div>
           <button
-            @click="auth.logout(); $router.push('/login')"
-            class="px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition"
+            @click="logout"
+            class="flex items-center gap-2 px-3 py-2 text-body font-medium text-brand-light-secondary dark:text-brand-dark-secondary hover:text-red-500 hover:bg-red-500/10 rounded-xl transition"
           >
-            Выйти
+            <LogOut class="w-4.5 h-4.5" />
+            <span class="hidden sm:inline">Выйти</span>
           </button>
         </div>
       </div>
     </header>
 
-    <div class="max-w-2xl mx-auto p-6 space-y-4">
-      <!-- Profile card -->
-      <div class="bg-white dark:bg-[#151827] rounded-2xl border border-slate-200 dark:border-[#2A2F4A] shadow-sm p-6 space-y-5">
-        <div class="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
-          <div class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-950/50 flex items-center justify-center">
-            <span class="text-indigo-600 dark:text-indigo-400 text-lg">👤</span>
-          </div>
-          <div>
-            <h1 class="text-base font-bold text-slate-900 dark:text-slate-100">Мой профиль</h1>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Заполните данные для поиска работы</p>
+    <main class="max-w-3xl mx-auto p-6 space-y-8">
+      <!-- Welcome Section -->
+      <section>
+        <h2 class="text-display text-brand-light-primary dark:text-brand-dark-primary mb-1">Ваш профиль</h2>
+        <p class="text-body text-brand-light-secondary dark:text-brand-dark-secondary">Управляйте вашими данными и находите лучшие предложения</p>
+      </section>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <!-- Main Form -->
+        <div class="md:col-span-2 space-y-6">
+          <div class="bg-brand-light-surface dark:bg-brand-dark-surface rounded-3xl border border-brand-light-border dark:border-brand-dark-border shadow-xl shadow-brand-accent/5 p-8 space-y-6">
+            <div class="flex items-center gap-3 pb-6 border-b border-brand-light-border dark:border-brand-dark-border">
+              <div class="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center">
+                <User class="text-brand-accent w-5 h-5" />
+              </div>
+              <h3 class="text-heading text-brand-light-primary dark:text-brand-dark-primary">Личная информация</h3>
+            </div>
+
+            <div class="space-y-5">
+              <div class="space-y-2">
+                <label class="text-label text-brand-light-primary dark:text-brand-dark-primary ml-1">ФИО</label>
+                <input
+                  v-model="form.full_name"
+                  type="text"
+                  placeholder="Константинопольский Константин"
+                  class="w-full bg-brand-light-elevated dark:bg-brand-dark-elevated border border-brand-light-border dark:border-brand-dark-border rounded-xl px-4 py-3 text-body text-brand-light-primary dark:text-brand-dark-primary placeholder-brand-light-muted dark:placeholder-brand-dark-muted focus:outline-none focus:border-brand-accent focus:ring-4 focus:ring-brand-accent/10 transition-all"
+                />
+              </div>
+
+              <div class="space-y-2">
+                <label class="text-label text-brand-light-primary dark:text-brand-dark-primary ml-1">Ключевые навыки</label>
+                <textarea
+                  v-model="form.skills"
+                  rows="3"
+                  placeholder="Python, Vue.js, Tailwind, Docker..."
+                  class="w-full bg-brand-light-elevated dark:bg-brand-dark-elevated border border-brand-light-border dark:border-brand-dark-border rounded-xl px-4 py-3 text-body text-brand-light-primary dark:text-brand-dark-primary placeholder-brand-light-muted dark:placeholder-brand-dark-muted focus:outline-none focus:border-brand-accent focus:ring-4 focus:ring-brand-accent/10 transition-all resize-none"
+                />
+              </div>
+
+              <div class="space-y-2">
+                <label class="text-label text-brand-light-primary dark:text-brand-dark-primary ml-1">Опыт работы</label>
+                <textarea
+                  v-model="form.experience"
+                  rows="5"
+                  placeholder="Расскажите о последних проектах и достижениях..."
+                  class="w-full bg-brand-light-elevated dark:bg-brand-dark-elevated border border-brand-light-border dark:border-brand-dark-border rounded-xl px-4 py-3 text-body text-brand-light-primary dark:text-brand-dark-primary placeholder-brand-light-muted dark:placeholder-brand-dark-muted focus:outline-none focus:border-brand-accent focus:ring-4 focus:ring-brand-accent/10 transition-all resize-none"
+                />
+              </div>
+            </div>
+
+            <div v-if="error" class="flex items-start gap-3 bg-red-500/5 border border-red-500/20 rounded-xl p-4">
+              <Loader2 v-if="loading" class="w-5 h-5 animate-spin" />
+              <p class="text-caption text-red-500">{{ error }}</p>
+            </div>
+
+            <div v-if="saved" class="flex items-center gap-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4">
+              <Check class="w-5 h-5 text-emerald-500" />
+              <p class="text-caption text-emerald-500">Изменения успешно сохранены!</p>
+            </div>
+
+            <button
+              @click="saveProfile"
+              :disabled="saving"
+              class="w-full bg-brand-accent hover:bg-brand-accent-hover disabled:opacity-60 text-white rounded-xl py-3.5 text-body font-bold transition-all shadow-lg shadow-brand-accent/25 flex items-center justify-center gap-2 active:scale-[0.98]"
+            >
+              <Loader2 v-if="saving" class="w-5 h-5 animate-spin" />
+              {{ saving ? 'Сохранение...' : 'Обновить профиль' }}
+            </button>
           </div>
         </div>
 
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-              ФИО <span class="text-red-500">*</span>
-            </label>
-            <input
-              v-model="form.full_name"
-              type="text"
-              placeholder="Иванов Иван Иванович"
-              class="w-full bg-slate-50 dark:bg-[#1E2235] border border-slate-300 dark:border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Навыки</label>
-            <textarea
-              v-model="form.skills"
-              rows="3"
-              placeholder="Python, FastAPI, PostgreSQL, Docker..."
-              class="w-full bg-slate-50 dark:bg-[#1E2235] border border-slate-300 dark:border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition resize-none"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Опыт работы</label>
-            <textarea
-              v-model="form.experience"
-              rows="4"
-              placeholder="2 года в ООО Компания, должность Backend Developer..."
-              class="w-full bg-slate-50 dark:bg-[#1E2235] border border-slate-300 dark:border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition resize-none"
-            />
-          </div>
-
-          <!-- File upload -->
-          <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Резюме (PDF/Word)</label>
+        <!-- Sidebar Actions -->
+        <div class="space-y-6">
+          <!-- Resume Upload -->
+          <div class="bg-brand-light-surface dark:bg-brand-dark-surface rounded-3xl border border-brand-light-border dark:border-brand-dark-border shadow-xl shadow-brand-accent/5 p-6 space-y-4">
+            <h3 class="text-heading text-brand-light-primary dark:text-brand-dark-primary flex items-center gap-2">
+              <FileText class="w-5 h-5 text-brand-accent" />
+              Резюме
+            </h3>
+            
             <input ref="fileInput" type="file" accept=".pdf,.doc,.docx" class="hidden" @change="uploadResume" />
             <div
               @click="fileInput.click()"
-              class="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-600 rounded-xl p-4 cursor-pointer transition-colors group"
+              class="border-2 border-dashed border-brand-light-border dark:border-brand-dark-border hover:border-brand-accent dark:hover:border-brand-accent rounded-2xl p-6 cursor-pointer transition-all duration-200 group flex flex-col items-center text-center space-y-3 bg-brand-light-elevated/50 dark:bg-brand-dark-elevated/30"
             >
-              <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/40 flex items-center justify-center transition-colors">
-                  <span class="text-slate-500 dark:text-slate-400 group-hover:text-indigo-500 text-base">📄</span>
-                </div>
-                <div>
-                  <p class="text-sm font-medium text-slate-700 dark:text-slate-300">
-                    {{ uploading ? 'Загружаю...' : form.resume_url ? 'Заменить файл' : 'Загрузить резюме' }}
-                  </p>
-                  <p class="text-xs text-slate-400 dark:text-slate-500">PDF, DOC, DOCX</p>
-                </div>
+              <div class="w-12 h-12 rounded-full bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border flex items-center justify-center group-hover:shadow-md transition-all">
+                <Upload v-if="!uploading" class="w-6 h-6 text-brand-light-muted dark:text-brand-dark-muted group-hover:text-brand-accent transition-colors" />
+                <Loader2 v-else class="w-6 h-6 animate-spin text-brand-accent" />
+              </div>
+              <div>
+                <p class="text-body font-semibold text-brand-light-primary dark:text-brand-dark-primary">
+                  {{ uploading ? 'Загрузка...' : 'Загрузите файл' }}
+                </p>
+                <p class="text-caption text-brand-light-secondary dark:text-brand-dark-secondary">PDF или Word до 10MB</p>
               </div>
             </div>
-            <a
-              v-if="form.resume_url"
-              :href="form.resume_url"
-              target="_blank"
-              class="inline-flex items-center gap-1.5 mt-2 text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
-            >
-              <span>🔗</span> Просмотреть загруженное резюме
-            </a>
+
+            <div v-if="form.resume_url" class="p-3 bg-brand-accent/5 border border-brand-accent/20 rounded-xl flex items-center justify-between">
+              <div class="flex items-center gap-2 overflow-hidden">
+                <FileText class="w-4 h-4 text-brand-accent shrink-0" />
+                <span class="text-caption text-brand-accent font-medium truncate">resume.pdf</span>
+              </div>
+              <a :href="form.resume_url" target="_blank" class="p-1.5 hover:bg-brand-accent/10 rounded-lg text-brand-accent transition-colors">
+                <ExternalLink class="w-4 h-4" />
+              </a>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div v-if="vacancies.length" class="bg-brand-light-surface dark:bg-brand-dark-surface rounded-3xl border border-brand-light-border dark:border-brand-dark-border shadow-xl shadow-brand-accent/5 p-6 space-y-4">
+            <h3 class="text-heading text-brand-light-primary dark:text-brand-dark-primary flex items-center gap-2">
+              <Zap class="w-5 h-5 text-brand-status-new" />
+              Откликнуться
+            </h3>
+            <div class="space-y-3">
+              <div class="relative">
+                <select
+                  v-model="selectedVacancy"
+                  class="w-full bg-brand-light-elevated dark:bg-brand-dark-elevated border border-brand-light-border dark:border-brand-dark-border rounded-xl pl-4 pr-10 py-3 text-body text-brand-light-primary dark:text-brand-dark-primary focus:outline-none focus:border-brand-accent transition-all appearance-none cursor-pointer"
+                >
+                  <option v-for="v in vacancies" :key="v.id" :value="v.id">{{ v.title }}</option>
+                </select>
+                <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-brand-light-muted">
+                  <ChevronDown class="w-4 h-4" />
+                </div>
+              </div>
+              <button
+                @click="applyToVacancy"
+                :disabled="applying"
+                class="w-full bg-brand-status-hired hover:bg-emerald-600 disabled:opacity-60 text-white rounded-xl py-3 text-body font-bold transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+              >
+                <Loader2 v-if="applying" class="w-4 h-4 animate-spin" />
+                {{ applying ? 'Отправка...' : 'Отправить отклик' }}
+              </button>
+              <div v-if="applied" class="animate-in fade-in slide-in-from-top-2 duration-300">
+                <p class="text-caption text-emerald-500 text-center font-medium">✓ Отклик успешно отправлен!</p>
+              </div>
+            </div>
           </div>
         </div>
-
-        <div v-if="error" class="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-lg px-3.5 py-2.5">
-          <p class="text-red-600 dark:text-red-400 text-sm">{{ error }}</p>
-        </div>
-        <div v-if="saved" class="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 rounded-lg px-3.5 py-2.5">
-          <p class="text-emerald-600 dark:text-emerald-400 text-sm">✓ Профиль сохранён!</p>
-        </div>
-
-        <button
-          @click="saveProfile"
-          :disabled="saving"
-          class="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white rounded-lg py-2.5 text-sm font-semibold transition-all shadow-md shadow-indigo-500/25 hover:shadow-lg hover:shadow-indigo-500/30"
-        >
-          {{ saving ? 'Сохраняю...' : 'Сохранить профиль' }}
-        </button>
       </div>
-
-      <!-- Apply to vacancy -->
-      <div v-if="vacancies.length" class="bg-white dark:bg-[#151827] rounded-2xl border border-slate-200 dark:border-[#2A2F4A] shadow-sm p-6">
-        <div class="flex items-center gap-3 mb-4">
-          <div class="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center">
-            <span class="text-emerald-600 dark:text-emerald-400">💼</span>
-          </div>
-          <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Откликнуться на вакансию</h2>
-        </div>
-        <div class="flex gap-2">
-          <select
-            v-model="selectedVacancy"
-            class="flex-1 bg-slate-50 dark:bg-[#1E2235] border border-slate-300 dark:border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-          >
-            <option v-for="v in vacancies" :key="v.id" :value="v.id">{{ v.title }}</option>
-          </select>
-          <button
-            @click="applyToVacancy"
-            :disabled="applying"
-            class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white rounded-lg text-sm font-semibold transition"
-          >
-            {{ applying ? '...' : 'Откликнуться' }}
-          </button>
-        </div>
-        <p v-if="applied" class="text-emerald-600 dark:text-emerald-400 text-sm mt-2">✓ Отклик отправлен!</p>
-      </div>
-    </div>
+    </main>
   </div>
 </template>

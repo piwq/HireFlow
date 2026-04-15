@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.js'
 import { useThemeStore } from '@/stores/theme.js'
+import { Mail, Lock, Sun, Moon, Briefcase, AlertCircle, Loader2 } from 'lucide-vue-next'
 
 const auth = useAuthStore()
 const theme = useThemeStore()
@@ -32,67 +33,81 @@ async function submit() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50 dark:bg-[#0D0F1A] flex items-center justify-center p-4">
+  <div class="min-h-screen bg-brand-light-base dark:bg-brand-dark-base flex items-center justify-center p-4 antialiased font-sans">
     <!-- Theme toggle top right -->
     <button
       @click="theme.toggle()"
-      class="fixed top-4 right-4 w-9 h-9 rounded-lg bg-white dark:bg-[#151827] border border-slate-200 dark:border-[#2A2F4A] flex items-center justify-center text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition shadow-sm"
+      class="fixed top-6 right-6 w-10 h-10 rounded-xl bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border flex items-center justify-center text-brand-light-secondary dark:text-brand-dark-secondary hover:text-brand-light-primary dark:hover:text-brand-dark-primary transition-all duration-200 shadow-sm"
     >
-      {{ theme.dark ? '☀️' : '🌙' }}
+      <Sun v-if="theme.dark" class="w-5 h-5" />
+      <Moon v-else class="w-5 h-5" />
     </button>
 
     <div class="w-full max-w-md">
       <!-- Logo -->
-      <div class="flex items-center justify-center gap-3 mb-8">
-        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-          <span class="text-white font-bold text-lg">H</span>
+      <div class="flex items-center justify-center gap-3 mb-10">
+        <div class="w-12 h-12 rounded-2xl bg-brand-accent flex items-center justify-center shadow-xl shadow-brand-accent/30">
+          <Briefcase class="w-6 h-6 text-white" />
         </div>
-        <span class="font-bold text-slate-900 dark:text-slate-100 text-2xl tracking-tight">HireFlow</span>
+        <h1 class="font-bold text-brand-light-primary dark:text-brand-dark-primary text-3xl tracking-tight">HireFlow</h1>
       </div>
 
-      <div class="bg-white dark:bg-[#151827] rounded-2xl border border-slate-200 dark:border-[#2A2F4A] shadow-xl shadow-slate-200/60 dark:shadow-black/20 p-8">
-        <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100 mb-1">Добро пожаловать</h1>
-        <p class="text-slate-500 dark:text-slate-400 text-sm mb-6">Войдите в свой аккаунт</p>
+      <div class="bg-brand-light-surface dark:bg-brand-dark-surface rounded-3xl border border-brand-light-border dark:border-brand-dark-border shadow-2xl shadow-brand-accent/5 p-10">
+        <div class="mb-8">
+          <h2 class="text-display text-brand-light-primary dark:text-brand-dark-primary mb-2">С возвращением</h2>
+          <p class="text-body text-brand-light-secondary dark:text-brand-dark-secondary">Войдите в систему управления персоналом</p>
+        </div>
 
-        <form @submit.prevent="submit" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Email</label>
-            <input
-              v-model="email"
-              type="email"
-              placeholder="example@mail.ru"
-              class="w-full bg-slate-50 dark:bg-[#1E2235] border border-slate-300 dark:border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Пароль</label>
-            <input
-              v-model="password"
-              type="password"
-              placeholder="••••••••"
-              class="w-full bg-slate-50 dark:bg-[#1E2235] border border-slate-300 dark:border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-            />
+        <form @submit.prevent="submit" class="space-y-6">
+          <div class="space-y-2">
+            <label class="text-label text-brand-light-primary dark:text-brand-dark-primary ml-1">Email</label>
+            <div class="relative group">
+              <Mail class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-brand-light-muted dark:text-brand-dark-muted group-focus-within:text-brand-accent transition-colors" />
+              <input
+                v-model="email"
+                type="email"
+                placeholder="name@company.com"
+                class="w-full bg-brand-light-elevated dark:bg-brand-dark-elevated border border-brand-light-border dark:border-brand-dark-border rounded-xl pl-11 pr-4 py-3 text-body text-brand-light-primary dark:text-brand-dark-primary placeholder-brand-light-muted dark:placeholder-brand-dark-muted focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent focus:ring-4 focus:ring-brand-accent/10 transition-all"
+              />
+            </div>
           </div>
 
-          <div v-if="error" class="flex items-center gap-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-lg px-3.5 py-2.5">
-            <p class="text-red-600 dark:text-red-400 text-sm">{{ error }}</p>
+          <div class="space-y-2">
+            <label class="text-label text-brand-light-primary dark:text-brand-dark-primary ml-1">Пароль</label>
+            <div class="relative group">
+              <Lock class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-brand-light-muted dark:text-brand-dark-muted group-focus-within:text-brand-accent transition-colors" />
+              <input
+                v-model="password"
+                type="password"
+                placeholder="••••••••"
+                class="w-full bg-brand-light-elevated dark:bg-brand-dark-elevated border border-brand-light-border dark:border-brand-dark-border rounded-xl pl-11 pr-4 py-3 text-body text-brand-light-primary dark:text-brand-dark-primary placeholder-brand-light-muted dark:placeholder-brand-dark-muted focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent focus:ring-4 focus:ring-brand-accent/10 transition-all"
+              />
+            </div>
+          </div>
+
+          <div v-if="error" class="flex items-start gap-3 bg-red-500/5 border border-red-500/20 rounded-xl p-4">
+            <AlertCircle class="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <p class="text-caption text-red-500">{{ error }}</p>
           </div>
 
           <button
             type="submit"
             :disabled="loading"
-            class="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-60 text-white rounded-lg py-2.5 text-sm font-semibold transition-all shadow-md shadow-indigo-500/25 hover:shadow-lg hover:shadow-indigo-500/30 mt-2"
+            class="w-full bg-brand-accent hover:bg-brand-accent-hover active:scale-[0.98] disabled:opacity-60 text-white rounded-xl py-3.5 text-body font-bold transition-all shadow-lg shadow-brand-accent/25 flex items-center justify-center gap-2"
           >
-            {{ loading ? 'Входим...' : 'Войти' }}
+            <Loader2 v-if="loading" class="w-5 h-5 animate-spin" />
+            {{ loading ? 'Авторизация...' : 'Войти в систему' }}
           </button>
         </form>
 
-        <p class="text-center text-sm text-slate-500 dark:text-slate-400 mt-5">
-          Нет аккаунта?
-          <RouterLink to="/register" class="text-indigo-600 dark:text-indigo-400 font-medium hover:underline">
-            Зарегистрироваться
-          </RouterLink>
-        </p>
+        <div class="mt-8 pt-8 border-t border-brand-light-border dark:border-brand-dark-border text-center">
+          <p class="text-caption text-brand-light-secondary dark:text-brand-dark-secondary">
+            У вас еще нет аккаунта?
+            <RouterLink to="/register" class="text-brand-accent font-semibold hover:text-brand-accent-hover transition-colors ml-1">
+              Регистрация профиля
+            </RouterLink>
+          </p>
+        </div>
       </div>
     </div>
   </div>
