@@ -1,6 +1,6 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, and_
+from sqlalchemy import select, or_, and_, update, func as sa_func
 from jose import jwt, JWTError
 
 from app.config import settings
@@ -55,7 +55,7 @@ async def websocket_endpoint(ws: WebSocket, token: str = Query(...)):
                 continue
 
             async with AsyncSessionLocal() as db:
-                msg = Message(sender_id=user_id, receiver_id=receiver_id, text=text)
+                msg = Message(sender_id=user_id, receiver_id=receiver_id, text=text, is_read=False)
                 db.add(msg)
                 await db.commit()
                 await db.refresh(msg)
@@ -78,6 +78,23 @@ async def websocket_endpoint(ws: WebSocket, token: str = Query(...)):
         manager.disconnect(user_id)
 
 
+@router.get("/messages/unread-counts")
+async def unread_counts(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return unread message counts grouped by sender: {sender_id: count}"""
+    result = await db.execute(
+        select(Message.sender_id, sa_func.count(Message.id))
+        .where(
+            Message.receiver_id == current_user.id,
+            Message.is_read == False,
+        )
+        .group_by(Message.sender_id)
+    )
+    return {sender_id: count for sender_id, count in result.all()}
+
+
 @router.get("/messages/{other_user_id}", response_model=list[MessageResponse])
 async def get_conversation(
     other_user_id: int,
@@ -95,3 +112,24 @@ async def get_conversation(
         .order_by(Message.created_at)
     )
     return result.scalars().all()
+
+
+@router.post("/messages/read/{other_user_id}")
+async def mark_read(
+    other_user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Mark all messages from other_user_id to current_user as read."""
+    await db.execute(
+        update(Message)
+        .where(
+            Message.sender_id == other_user_id,
+            Message.receiver_id == current_user.id,
+            Message.is_read == False,
+        )
+        .values(is_read=True)
+    )
+    await db.commit()
+    return {"ok": True}
+

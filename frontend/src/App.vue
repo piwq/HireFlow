@@ -7,13 +7,14 @@ import AppLayout from '@/components/AppLayout.vue'
 const theme = useThemeStore()
 const route = useRoute()
 
-// Only HR and Manager get the sidebar layout
+// HR, Manager and Candidate get the sidebar layout
 const useLayout = computed(() => {
   const userRole = localStorage.getItem('role') || ''
-  if (userRole !== 'hr' && userRole !== 'manager') return false
-  const { role, roles } = route.meta
-  if (role === 'hr' || role === 'manager') return true
-  if (roles?.includes('hr') || roles?.includes('manager')) return true
+  if (!['hr', 'manager', 'candidate'].includes(userRole)) return false
+  const { role, roles, guest } = route.meta
+  if (guest) return false
+  if (['hr', 'manager', 'candidate'].includes(role)) return true
+  if (roles?.some(r => ['hr', 'manager', 'candidate'].includes(r))) return true
   return false
 })
 </script>

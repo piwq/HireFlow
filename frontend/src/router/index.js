@@ -10,6 +10,16 @@ const routes = [
     meta: { role: 'candidate' },
   },
   {
+    path: '/candidate/applications',
+    component: () => import('@/views/candidate/ApplicationsView.vue'),
+    meta: { role: 'candidate' },
+  },
+  {
+    path: '/candidate/interviews',
+    component: () => import('@/views/candidate/InterviewsView.vue'),
+    meta: { role: 'candidate' },
+  },
+  {
     path: '/hr',
     component: () => import('@/views/hr/CandidatesView.vue'),
     meta: { role: 'hr' },
@@ -32,7 +42,7 @@ const routes = [
   {
     path: '/chat',
     component: () => import('@/views/chat/ChatView.vue'),
-    meta: { roles: ['hr', 'manager'] },
+    meta: { roles: ['hr', 'manager', 'candidate'] },
   },
   {
     path: '/call/:roomCode',

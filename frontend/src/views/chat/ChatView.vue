@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick, watch, computed } from 'vue'
 import api from '@/api/index.js'
+import { unreadCounts, loadUnreadCounts, clearForUser, incrementForUser } from '@/stores/unread.js'
 import {
   MessageSquare,
   Send,
@@ -43,7 +44,7 @@ const filteredUsers = computed(() => {
 })
 
 onMounted(async () => {
-  await loadUsers()
+  await Promise.all([loadUsers(), loadUnreadCounts()])
   connectWS()
 })
 
@@ -51,9 +52,13 @@ onUnmounted(() => {
   ws.value?.close()
 })
 
+const currentRole = localStorage.getItem('role')
+
 async function loadUsers() {
   try {
-    const { data } = await api.get('/users/')
+    // HR/Manager see all users; candidates only see conversation partners
+    const url = currentRole === 'candidate' ? '/users/conversations' : '/users/'
+    const { data } = await api.get(url)
     users.value = data
   } catch {}
 }
@@ -64,6 +69,9 @@ async function selectUser(user) {
   try {
     const { data } = await api.get(`/messages/${user.id}`)
     messages.value = data
+    // Mark messages as read
+    await api.post(`/messages/read/${user.id}`)
+    clearForUser(user.id)
   } catch {
     messages.value = []
   } finally {
@@ -85,16 +93,33 @@ function connectWS() {
     ws.value = socket
   }
 
-  socket.onmessage = (event) => {
+  socket.onmessage = async (event) => {
     const msg = JSON.parse(event.data)
-    if (!selectedUser.value) return
-    const otherId = selectedUser.value.id
-    if (msg.sender_id === otherId || msg.receiver_id === otherId) {
-      // avoid duplicate if we already added it optimistically
+    const otherId = msg.sender_id === currentUserId ? msg.receiver_id : msg.sender_id
+
+    // If sender is not in our user list, refresh conversation list
+    if (!users.value.find(u => u.id === otherId)) {
+      await loadUsers()
+      // Auto-select the new conversation if nothing is selected
+      if (!selectedUser.value) {
+        const newUser = users.value.find(u => u.id === otherId)
+        if (newUser) await selectUser(newUser)
+      }
+    }
+
+    // Add message to current conversation if applicable
+    if (selectedUser.value && (selectedUser.value.id === otherId)) {
       if (!messages.value.find(m => m.id === msg.id)) {
         messages.value.push(msg)
         scrollToBottom()
       }
+      // Auto-mark as read since user is viewing this conversation
+      if (msg.sender_id !== currentUserId) {
+        api.post(`/messages/read/${otherId}`).catch(() => {})
+      }
+    } else if (msg.sender_id !== currentUserId) {
+      // Not viewing this conversation — increment unread
+      incrementForUser(otherId)
     }
   }
 
@@ -226,6 +251,12 @@ const groupedMessages = computed(() => {
               {{ ROLE_LABEL[user.role] || user.role }}
             </p>
           </div>
+          <span
+            v-if="unreadCounts[user.id]"
+            class="min-w-[20px] h-5 rounded-full bg-brand-accent text-white text-[11px] font-bold flex items-center justify-center px-1.5 shrink-0 shadow-sm shadow-brand-accent/30"
+          >
+            {{ unreadCounts[user.id] }}
+          </span>
         </button>
       </div>
     </div>

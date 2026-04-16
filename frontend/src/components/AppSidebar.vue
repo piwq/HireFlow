@@ -1,13 +1,17 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.js'
 import { useThemeStore } from '@/stores/theme.js'
+import { unreadCounts, loadUnreadCounts, getTotalUnread } from '@/stores/unread.js'
 import {
   Users,
+  User,
   Briefcase,
   Calendar,
   FileText,
+  ClipboardList,
+  Video,
   Sun,
   Moon,
   LogOut,
@@ -37,6 +41,12 @@ const navItems = computed(() => {
     { label: 'Отзывы', icon: FileText, to: '/manager/reviews' },
     { label: 'Чат', icon: MessageSquare, to: '/chat' },
   ]
+  if (auth.role === 'candidate') return [
+    { label: 'Профиль', icon: User, to: '/candidate' },
+    { label: 'Мои заявки', icon: ClipboardList, to: '/candidate/applications' },
+    { label: 'Собеседования', icon: Video, to: '/candidate/interviews' },
+    { label: 'Чат', icon: MessageSquare, to: '/chat' },
+  ]
   return []
 })
 
@@ -44,6 +54,17 @@ function logout() {
   auth.logout()
   router.push('/login')
 }
+
+const totalUnread = computed(() => getTotalUnread())
+
+let pollInterval = null
+onMounted(() => {
+  loadUnreadCounts()
+  pollInterval = setInterval(loadUnreadCounts, 30000)
+})
+onUnmounted(() => {
+  if (pollInterval) clearInterval(pollInterval)
+})
 </script>
 
 <template>
@@ -76,7 +97,7 @@ function logout() {
         <div>
           <h1 class="font-bold text-brand-light-primary dark:text-brand-dark-primary text-xl leading-none tracking-tight">HireFlow</h1>
           <p class="text-micro text-brand-light-secondary dark:text-brand-dark-secondary mt-1 uppercase tracking-wider">
-            {{ auth.role === 'hr' ? 'HR Portal' : 'Management' }}
+            {{ auth.role === 'hr' ? 'HR Portal' : auth.role === 'candidate' ? 'Candidate Portal' : 'Management' }}
           </p>
         </div>
       </div>
@@ -99,6 +120,12 @@ function logout() {
       >
         <component :is="item.icon" class="w-4.5 h-4.5" :class="route.path === item.to ? 'text-brand-accent' : 'text-brand-light-muted dark:text-brand-dark-muted group-hover:text-brand-light-primary dark:group-hover:text-brand-dark-primary'" />
         <span class="flex-1">{{ item.label }}</span>
+        <span
+          v-if="item.to === '/chat' && totalUnread > 0"
+          class="min-w-[20px] h-5 rounded-full bg-brand-accent text-white text-[11px] font-bold flex items-center justify-center px-1.5 shadow-sm shadow-brand-accent/30"
+        >
+          {{ totalUnread > 99 ? '99+' : totalUnread }}
+        </span>
         <ChevronRight v-if="route.path === item.to" class="w-4 h-4" />
       </RouterLink>
     </nav>
