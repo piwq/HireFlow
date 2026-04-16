@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0B1220" />
+<title>HireFlow · Speaker Notes</title>
+<style>
+  :root{
+    --bg:#0B1220;
+    --bg-2:#111A2E;
+    --surface:#15203A;
+    --surface-2:#1B2744;
+    --border:#26324F;
+    --text:#E6ECF5;
+    --muted:#96A3BC;
+    --accent:#818CF8;
+    --accent-2:#6366F1;
+    --ok:#34D399;
+    --warn:#FBBF24;
+    --danger:#F87171;
+    --chip:#1E2A48;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(99,102,241,.18), transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, rgba(52,211,153,.10), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    line-height:1.55;
+    font-size:16px;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:calc(80px + env(safe-area-inset-bottom));
+  }
+
+  /* Top bar */
+  .topbar{
+    position:sticky; top:0; z-index:20;
+    background:rgba(11,18,32,.85);
+    backdrop-filter:saturate(1.4) blur(10px);
+    -webkit-backdrop-filter:saturate(1.4) blur(10px);
+    border-bottom:1px solid var(--border);
+    padding:12px 16px calc(12px + env(safe-area-inset-top,0)) 16px;
+    padding-top:calc(12px + env(safe-area-inset-top,0));
+  }
+  .topbar-row{display:flex; align-items:center; justify-content:space-between; gap:10px}
+  .brand{
+    font-weight:800; letter-spacing:.3px; font-size:17px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .brand .d{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 14px var(--accent)}
+  .meta{font-size:12px;color:var(--muted)}
+  .progress{
+    height:3px; background:var(--surface); border-radius:99px; overflow:hidden; margin-top:10px;
+  }
+  .progress-bar{height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--ok));
+    transition:width .25s ease}
+
+  .wrap{max-width:760px; margin:0 auto; padding:16px}
+
+  /* TOC */
+  details.toc{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:12px 14px; margin:8px 0 18px;
+  }
+  details.toc>summary{
+    cursor:pointer; font-weight:700; list-style:none;
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+  }
+  details.toc>summary::-webkit-details-marker{display:none}
+  details.toc>summary:after{content:"▾"; color:var(--muted); transition:transform .2s}
+  details.toc[open]>summary:after{transform:rotate(180deg)}
+  .toc-grid{margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:8px}
+  .toc-grid a{
+    display:flex; gap:8px; align-items:center;
+    text-decoration:none; color:var(--text);
+    background:var(--surface-2); border:1px solid var(--border);
+    border-radius:10px; padding:8px 10px; font-size:13px;
+  }
+  .toc-grid a b{color:var(--accent); font-variant-numeric:tabular-nums; min-width:22px}
+  @media (max-width:420px){ .toc-grid{grid-template-columns:1fr} }
+
+  /* Intro */
+  .intro{
+    background:linear-gradient(180deg, rgba(99,102,241,.12), rgba(99,102,241,0) 70%), var(--surface);
+    border:1px solid var(--border); border-radius:16px;
+    padding:16px; margin:6px 0 16px;
+  }
+  .intro h2{margin:0 0 8px; font-size:18px}
+  .intro p{margin:0; color:var(--muted); font-size:14px}
+  .tips{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px}
+  .tip{background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:10px; text-align:center}
+  .tip b{display:block; color:var(--accent); font-size:16px}
+  .tip span{font-size:11px; color:var(--muted)}
+  @media (max-width:420px){ .tips{grid-template-columns:repeat(3,1fr)} }
+
+  /* Slide card */
+  .slide{
+    background:var(--surface); border:1px solid var(--border); border-radius:16px;
+    padding:14px; margin:14px 0;
+    scroll-margin-top:110px;
+  }
+  .slide-header{display:flex; align-items:center; gap:10px; margin-bottom:10px}
+  .sn{
+    font-size:12px; font-weight:800; letter-spacing:.4px;
+    background:var(--accent-2); color:#fff;
+    padding:4px 8px; border-radius:999px; min-width:34px; text-align:center;
+  }
+  .tag{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px}
+  .slide h3{margin:0 0 4px; font-size:18px; line-height:1.25}
+  .slide .time{font-size:12px; color:var(--muted)}
+
+  .block{margin-top:12px}
+  .block-title{
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.6px;
+    color:var(--accent); margin-bottom:6px;
+    display:flex; align-items:center; gap:6px;
+  }
+  .block-title .ic{font-size:13px}
+  .say{
+    background:var(--surface-2); border:1px solid var(--border); border-radius:10px;
+    padding:10px 12px; font-size:15px;
+  }
+  .say p{margin:0 0 8px}
+  .say p:last-child{margin:0}
+  .say em{color:var(--accent); font-style:normal; font-weight:600}
+
+  ul.points{margin:0; padding-left:18px}
+  ul.points li{margin:4px 0}
+  ul.points li b{color:#fff}
+
+  .chips{display:flex; flex-wrap:wrap; gap:6px}
+  .chip{
+    background:var(--chip); border:1px solid var(--border); color:var(--text);
+    padding:4px 10px; border-radius:999px; font-size:12px; white-space:nowrap;
+  }
+  .chip.num{color:var(--accent); font-weight:700}
+  .chip.ok{border-color:rgba(52,211,153,.4); color:var(--ok)}
+  .chip.warn{border-color:rgba(251,191,36,.4); color:var(--warn)}
+
+  .qa{border-left:3px solid var(--accent); padding:6px 10px; background:var(--surface-2); border-radius:0 10px 10px 0; margin-top:8px}
+  .qa .q{font-weight:700; color:#fff; font-size:14px}
+  .qa .a{color:var(--muted); font-size:14px; margin-top:4px}
+
+  .divider{height:1px; background:var(--border); margin:18px 0}
+
+  /* Bottom nav */
+  .botnav{
+    position:fixed; left:0; right:0; bottom:0; z-index:30;
+    background:rgba(11,18,32,.9);
+    backdrop-filter:saturate(1.4) blur(10px);
+    -webkit-backdrop-filter:saturate(1.4) blur(10px);
+    border-top:1px solid var(--border);
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom)) 12px;
+    display:flex; gap:8px; align-items:center; justify-content:space-between;
+  }
+  .botnav button, .botnav a{
+    flex:1; text-align:center;
+    background:var(--surface-2); color:var(--text);
+    border:1px solid var(--border); border-radius:12px;
+    padding:10px; font-size:14px; font-weight:600;
+    text-decoration:none; cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .botnav button:active{transform:scale(.98)}
+  .botnav .top{flex:0 0 auto; padding:10px 12px}
+
+  /* kill default focus ring on iOS */
+  button,a{outline:none}
+
+  /* small screen tweaks */
+  @media (max-width:380px){
+    body{font-size:15px}
+    .slide h3{font-size:17px}
+    .say{font-size:14px}
+    .wrap{padding:12px}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-row">
+    <div class="brand"><span class="d"></span>HireFlow · Speaker Notes</div>
+    <div class="meta" id="meta">19 слайдов · ~10 мин</div>
+  </div>
+  <div class="progress"><div class="progress-bar" id="pbar"></div></div>
+</header>
+
+<main class="wrap">
+
+<section class="intro">
+  <h2>Карточка защиты</h2>
+  <p>Короткие заметки к каждому слайду. Читай с телефона, пролистывай свайпом. Выделенное <em>курсивом</em> — акценты, которые точно стоит произнести.</p>
+  <div class="tips">
+    <div class="tip"><b>10 мин</b><span>презентация</span></div>
+    <div class="tip"><b>3 мин</b><span>демо</span></div>
+    <div class="tip"><b>5 мин</b><span>вопросы</span></div>
+  </div>
+</section>
+
+<details class="toc" open>
+  <summary>Оглавление</summary>
+  <div class="toc-grid">
+    <a href="#s1"><b>01</b> Титул</a>
+    <a href="#s2"><b>02</b> Проблема</a>
+    <a href="#s3"><b>03</b> Концепция</a>
+    <a href="#s4"><b>04</b> Роли</a>
+    <a href="#s5"><b>05</b> Стек</a>
+    <a href="#s6"><b>06</b> Архитектура</a>
+    <a href="#s7"><b>07</b> ТЗ ч.1</a>
+    <a href="#s8"><b>08</b> ТЗ ч.2</a>
+    <a href="#s9"><b>09</b> Кандидат</a>
+    <a href="#s10"><b>10</b> HR</a>
+    <a href="#s11"><b>11</b> Руководитель</a>
+    <a href="#s12"><b>12</b> Админ</a>
+    <a href="#s13"><b>13</b> AI-резюме</a>
+    <a href="#s14"><b>14</b> СТД-Р</a>
+    <a href="#s15"><b>15</b> Kanban</a>
+    <a href="#s16"><b>16</b> LiveKit + TG</a>
+    <a href="#s17"><b>17</b> Безопасность</a>
+    <a href="#s18"><b>18</b> Качество</a>
+    <a href="#s19"><b>19</b> Спасибо</a>
+  </div>
+</details>
+
+<!-- 1 -->
+<section class="slide" id="s1">
+  <div class="slide-header"><span class="sn">01</span><span class="tag">Титул</span></div>
+  <h3>HireFlow — HR-платформа полного цикла</h3>
+  <div class="time">⏱ 15 сек · говори уверенно, смотри в зал</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p>Добрый день. Меня зовут <em>[имя]</em>. Представляю проект <em>HireFlow</em> — HR-платформу полного цикла, которая закрывает всё ТЗ и добавляет сверху несколько killer-фич.</p>
+      <p>За десять минут покажу, как мы решили задачу от регистрации кандидата до оффера в одном продукте.</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">💡</span>Подсказка</div>
+    <div class="chips">
+      <span class="chip">Не торопись</span>
+      <span class="chip">Пауза после названия</span>
+      <span class="chip">Переход: «Начнём с проблемы»</span>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide" id="s2">
+  <div class="slide-header"><span class="sn">02</span><span class="tag">Проблема</span></div>
+  <h3>Почему классический найм буксует</h3>
+  <div class="time">⏱ 40 сек</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p>Современный найм собран из разрозненных инструментов: <em>Excel, почта, Zoom, Google-формы</em>. На каждом стыке теряется контекст.</p>
+      <p>Четыре боли: <em>разрозненность</em>, <em>ручной ввод</em>, <em>потеря истории</em>, <em>молчание</em> по кандидату. Каждую закрываем одним продуктом.</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🎯</span>Карта «проблема → решение»</div>
+    <ul class="points">
+      <li><b>Разрозненность</b> → единое окно с Kanban, чатом, LiveKit</li>
+      <li><b>Ручной ввод</b> → импорт СТД-Р + AI-конструктор резюме</li>
+      <li><b>Потеря истории</b> → audit log, история статусов, notes</li>
+      <li><b>Молчание</b> → WebSocket + Telegram-бот, мгновенно</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide" id="s3">
+  <div class="slide-header"><span class="sn">03</span><span class="tag">Концепция</span></div>
+  <h3>HireFlow — единая платформа</h3>
+  <div class="time">⏱ 30 сек</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p>Четыре принципа отличают HireFlow от «очередной CRM»: <em>жёсткий RBAC</em>, <em>real-time</em>, <em>AI-ассистент</em> и <em>встроенное видео</em>.</p>
+      <p>Это не четыре фичи — это четыре <em>архитектурных решения</em>, которые пронизывают весь продукт.</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🔑</span>Ключевые слова</div>
+    <div class="chips">
+      <span class="chip">RBAC</span><span class="chip">IDOR-защита</span>
+      <span class="chip">WebSocket</span><span class="chip">Telegram bus</span>
+      <span class="chip">Gemini fallback</span><span class="chip">LiveKit WebRTC</span>
+    </div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide" id="s4">
+  <div class="slide-header"><span class="sn">04</span><span class="tag">ТЗ 2.1–2.4</span></div>
+  <h3>Четыре роли, четыре сценария</h3>
+  <div class="time">⏱ 45 сек</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p>Все четыре роли из ТЗ реализованы с полным набором прав: <em>Кандидат, HR, Руководитель, Администратор</em>.</p>
+      <p>Подчеркну: у руководителя видны <em>только свои</em> кандидаты — IDOR-фильтр зашит на уровне БД-запроса, не на фронте.</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🔢</span>Цифры на память</div>
+    <div class="chips">
+      <span class="chip num">4 роли</span>
+      <span class="chip num">10 статусов</span>
+      <span class="chip num">20+ полей профиля</span>
+      <span class="chip num">4 критерия оценки</span>
+      <span class="chip num">15+ роутеров</span>
+    </div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide" id="s5">
+  <div class="slide-header"><span class="sn">05</span><span class="tag">Стек</span></div>
+  <h3>Стек разработки</h3>
+  <div class="time">⏱ 30 сек · не перечисляй всё — выделяй</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p>Современный асинхронный стек: <em>Vue 3 + Pinia</em> на фронте, <em>FastAPI + async SQLAlchemy</em> на бэке. Всё поднимается одной командой <em>docker compose up</em>.</p>
+      <p>Из нестандартного: <em>LiveKit</em> для видео, <em>MinIO</em> как S3, <em>Gemini</em> с multi-model fallback.</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">⚠️</span>Если спросят «почему»</div>
+    <div class="qa">
+      <div class="q">Почему FastAPI, а не Django?</div>
+      <div class="a">Async-first, нативная поддержка WebSocket, автогенерация OpenAPI, меньше оверхеда под API-only бэк.</div>
+    </div>
+    <div class="qa">
+      <div class="q">Почему MinIO, а не S3?</div>
+      <div class="a">Self-hosted в docker-сети, API-совместимо с S3 — легко мигрировать в облако без изменений кода.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide" id="s6">
+  <div class="slide-header"><span class="sn">06</span><span class="tag">Архитектура</span></div>
+  <h3>Как это собрано</h3>
+  <div class="time">⏱ 60 сек · самый важный слайд для «технарей»</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p>SPA на Vue ходит в <em>stateless FastAPI</em> по HTTPS и WebSocket. Бэкенд — без сессий, JWT в заголовке Authorization.</p>
+      <p>Middleware-цепочка: <em>CORS → Security headers → JWT → require_role → Handler</em>. Service-слой отделён от роутеров: notifications, s3, telegram_bot, ai fallback, pdf-parser.</p>
+      <p>Миграции через <em>Alembic</em>, сиды через <em>seed.py</em> — 15 пользователей, 6 вакансий, 14 откликов.</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗂️</span>Что где искать</div>
+    <ul class="points">
+      <li><b>backend/app/routers/</b> — endpoints, 15 модулей</li>
+      <li><b>backend/app/services/</b> — AI, S3, Telegram, notifications</li>
+      <li><b>backend/app/deps.py</b> — get_current_user, require_role</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide" id="s7">
+  <div class="slide-header"><span class="sn">07</span><span class="tag">ТЗ · часть 1</span></div>
+  <h3>Соответствие ТЗ — функционал</h3>
+  <div class="time">⏱ 40 сек</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p>Прошёлся по каждому функциональному требованию ТЗ: <em>все закрыты</em>. Регистрация, профиль, отклики, Kanban, интервью, фидбеки, чат, уведомления, экспорт резюме в PDF.</p>
+      <p>Покажу по галочкам — напротив каждого пункта указан роутер или файл, где это реализовано.</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">✅</span>Если попросят пример</div>
+    <ul class="points">
+      <li><b>Отклик → Kanban</b> — <code>routers/applications.py</code></li>
+      <li><b>Экспорт PDF</b> — стабильная разбивка на страницы, чистый layout</li>
+      <li><b>Чат</b> — WebSocket в <code>routers/messages.py</code></li>
+    </ul>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide" id="s8">
+  <div class="slide-header"><span class="sn">08</span><span class="tag">ТЗ · часть 2</span></div>
+  <h3>Соответствие ТЗ — нефункциональные</h3>
+  <div class="time">⏱ 40 сек</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p>Нефункциональные требования раздела 5 ТЗ: <em>безопасность, масштабируемость, развёртывание, документация</em>.</p>
+      <p>Stateless-бэк даёт горизонтальное масштабирование, async-first — event loop не блокируется. Документация API — автогенерация в <em>Swagger UI</em>.</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🧭</span>Переход</div>
+    <div class="say"><p>«Теперь — как это выглядит глазами каждой роли».</p></div>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide" id="s9">
+  <div class="slide-header"><span class="sn">09</span><span class="tag">Сценарий · Кандидат</span></div>
+  <h3>Путь кандидата</h3>
+  <div class="time">⏱ 35 сек · показывай скриншот или демо</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p>Кандидат регистрируется, загружает выписку СТД-Р с Госуслуг — <em>опыт работы заполняется автоматически</em>. Дальше AI-конструктор собирает резюме, кандидат откликается на вакансию и видит статус в реальном времени.</p>
+      <p>Уведомления приходят <em>в Telegram</em> — не нужно сидеть на сайте.</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🎬</span>Демо-чек-лист</div>
+    <div class="chips">
+      <span class="chip ok">Логин alex_dev</span>
+      <span class="chip ok">Импорт PDF</span>
+      <span class="chip ok">AI wizard</span>
+      <span class="chip ok">Отклик</span>
+    </div>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide" id="s10">
+  <div class="slide-header"><span class="sn">10</span><span class="tag">Сценарий · HR</span></div>
+  <h3>Рабочий стол HR</h3>
+  <div class="time">⏱ 40 сек</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p>HR видит базу с фильтрами по 8+ полям, перетягивает кандидата по Kanban — <em>стадия обновляется у всех подключённых в real-time</em>.</p>
+      <p>Здесь же назначение интервью, заметки, календарь и обработка запросов от руководителей.</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🎬</span>Демо-чек-лист</div>
+    <div class="chips">
+      <span class="chip ok">Логин hr_expert</span>
+      <span class="chip ok">Фильтр по навыкам</span>
+      <span class="chip ok">Drag в Kanban</span>
+      <span class="chip ok">Назначить интервью</span>
+    </div>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="slide" id="s11">
+  <div class="slide-header"><span class="sn">11</span><span class="tag">Сценарий · Руководитель</span></div>
+  <h3>Руководитель в найме</h3>
+  <div class="time">⏱ 30 сек</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p>Руководитель видит <em>только своих</em> кандидатов — фильтр в БД через JOIN по назначенным интервью. Защита от IDOR не на фронте, а на уровне запроса.</p>
+      <p>Даёт оценку по <em>4 критериям</em> + рекомендацию, запрос на интервью уходит HR-у.</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">⚠️</span>Возможный вопрос</div>
+    <div class="qa">
+      <div class="q">Как вы гарантируете IDOR-защиту?</div>
+      <div class="a">Фильтрация <em>в самом SQL-запросе</em> по <code>manager_id</code> через JOIN с интервью. Даже если подделать ID в URL — SELECT не вернёт строку.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide" id="s12">
+  <div class="slide-header"><span class="sn">12</span><span class="tag">Сценарий · Админ</span></div>
+  <h3>Админ-центр</h3>
+  <div class="time">⏱ 25 сек</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p>Админ управляет ролями, блокирует аккаунты (через <em>is_active</em> — JWT моментально обесценивается), смотрит статистику и <em>audit log</em>.</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🎬</span>Демо</div>
+    <div class="chips">
+      <span class="chip ok">admin@hireflow.ru</span>
+      <span class="chip ok">Блокировка</span>
+      <span class="chip ok">Логи</span>
+    </div>
+  </div>
+</section>
+
+<!-- 13 -->
+<section class="slide" id="s13">
+  <div class="slide-header"><span class="sn">13</span><span class="tag">Killer · AI</span></div>
+  <h3>AI-Конструктор резюме</h3>
+  <div class="time">⏱ 45 сек · это «вау»-фича, не торопись</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p>Четырёхшаговый wizard с <em>потоковой генерацией</em> на Gemini. В контекст улетает профиль кандидата — получаем релевантное резюме, а не шаблон.</p>
+      <p>Сверху — <em>multi-model fallback</em>: Gemini 2.5-flash → 1.5-flash → 1.5-pro → pro. Если один упал — автоматически следующий.</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🛡️</span>Защита от галлюцинаций</div>
+    <ul class="points">
+      <li>Промпт содержит <b>только профиль</b> — не «выдумай»</li>
+      <li>Вывод чистится <b>DOMPurify</b> от XSS</li>
+      <li>Экспорт в PDF со <b>стабильной разбивкой</b> на страницы</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 14 -->
+<section class="slide" id="s14">
+  <div class="slide-header"><span class="sn">14</span><span class="tag">Killer · Госуслуги</span></div>
+  <h3>Импорт выписки СТД-Р</h3>
+  <div class="time">⏱ 35 сек</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p>Кандидат скачивает выписку СТД-Р с Госуслуг — pdfplumber парсит таблицы, <em>опыт работы заполняется за 10 секунд</em>.</p>
+      <p>Это снимает самую большую боль — <em>ручной ввод опыта</em>, где кандидаты чаще всего уходят с формы.</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">⚙️</span>Техника</div>
+    <div class="chips">
+      <span class="chip">pdfplumber</span>
+      <span class="chip">async upload</span>
+      <span class="chip">валидация MIME</span>
+      <span class="chip">нормализация дат</span>
+    </div>
+  </div>
+</section>
+
+<!-- 15 -->
+<section class="slide" id="s15">
+  <div class="slide-header"><span class="sn">15</span><span class="tag">Killer · Real-time</span></div>
+  <h3>Real-time Kanban</h3>
+  <div class="time">⏱ 30 сек · покажи в двух окнах если успеешь</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p>Drag-and-drop стадий найма через <em>vue-draggable-plus</em>, синхронизация по WebSocket. Один HR перетянул — другой увидел <em>без F5</em>.</p>
+      <p>История переходов пишется: кто, когда, с какой на какую стадию.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 16 -->
+<section class="slide" id="s16">
+  <div class="slide-header"><span class="sn">16</span><span class="tag">Killer · LiveKit + TG</span></div>
+  <h3>LiveKit и Telegram Synergy</h3>
+  <div class="time">⏱ 40 сек</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p><em>LiveKit крутится в нашей Docker-сети</em>, токен выпускает бэкенд — никаких Zoom и Teams. Интервью стартует прямо из карточки кандидата.</p>
+      <p><em>Telegram-бот</em> — единая шина уведомлений: один вызов notifications-сервиса рассылает и в WebSocket, и в TG. HR получает пуш «кандидат подтвердил интервью», кандидат — «вам назначено собеседование».</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">⚠️</span>Возможный вопрос</div>
+    <div class="qa">
+      <div class="q">Почему свой LiveKit, а не Zoom SDK?</div>
+      <div class="a">Self-hosted WebRTC — <em>данные не уходят</em> во внешние сервисы. Важно для HR-контекста: персональные данные, оценки.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 17 -->
+<section class="slide" id="s17">
+  <div class="slide-header"><span class="sn">17</span><span class="tag">Безопасность</span></div>
+  <h3>Hardening: что защитили</h3>
+  <div class="time">⏱ 45 сек · любимый вопрос жюри</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p>Закрыт весь чек-лист раздела 5.2 ТЗ. <em>SQLi</em> — только ORM, raw SQL отсутствует. <em>XSS</em> — Vue эскейпит по умолчанию + DOMPurify на AI-выводе. <em>CSRF</em> — JWT в заголовке, не в cookie. <em>IDOR</em> — фильтры в БД-запросе.</p>
+      <p>Сверху: <em>CSP, HSTS, X-Frame-Options, X-Content-Type-Options</em> через middleware. Пароли — bcrypt с per-user salt.</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🛡️</span>Матрица угроз</div>
+    <div class="chips">
+      <span class="chip ok">SQLi ✓</span>
+      <span class="chip ok">XSS ✓</span>
+      <span class="chip ok">CSRF ✓</span>
+      <span class="chip ok">IDOR ✓</span>
+      <span class="chip ok">RBAC ✓</span>
+      <span class="chip ok">Headers ✓</span>
+      <span class="chip ok">bcrypt ✓</span>
+    </div>
+  </div>
+</section>
+
+<!-- 18 -->
+<section class="slide" id="s18">
+  <div class="slide-header"><span class="sn">18</span><span class="tag">Качество</span></div>
+  <h3>Качество кода и результат</h3>
+  <div class="time">⏱ 30 сек</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p>Всё ТЗ закрыто, сверху — <em>AI-конструктор, импорт СТД-Р, real-time Kanban, LiveKit, Telegram-бот, multi-model fallback</em>. Проект стартует одной командой, в docker-compose поднимаются все 5 сервисов.</p>
+      <p>Код разделён по слоям: routers / services / schemas / models — <em>легко добавлять фичи</em>.</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🔢</span>В цифрах</div>
+    <div class="chips">
+      <span class="chip num">15+ роутеров</span>
+      <span class="chip num">15+ моделей</span>
+      <span class="chip num">5 сервисов в compose</span>
+      <span class="chip num">15 seed-юзеров</span>
+    </div>
+  </div>
+</section>
+
+<!-- 19 -->
+<section class="slide" id="s19">
+  <div class="slide-header"><span class="sn">19</span><span class="tag">Финал</span></div>
+  <h3>Спасибо!</h3>
+  <div class="time">⏱ 10 сек · улыбнись, пауза, приглашение к вопросам</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p>Спасибо за внимание. <em>HireFlow</em> — это не прототип, а работающий MVP, который можно поднять за 5 минут и начать нанимать. Готов ответить на вопросы.</p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Bonus: tough questions -->
+<section class="slide" id="qa">
+  <div class="slide-header"><span class="sn">Q&amp;A</span><span class="tag">Бонус</span></div>
+  <h3>Топ-5 сложных вопросов</h3>
+
+  <div class="qa">
+    <div class="q">1. Что будет при отказе Gemini API?</div>
+    <div class="a">Multi-model fallback: 2.5-flash → 1.5-flash → 1.5-pro → pro. Если все упали — UI показывает ошибку, кандидат заполняет руками. Сервис не падает.</div>
+  </div>
+  <div class="qa">
+    <div class="q">2. Как масштабировать WebSocket?</div>
+    <div class="a">Сейчас in-memory registry подключений. На horizontal scale — Redis pub/sub, уже в roadmap. Бэкенд stateless, упирается только в sockets.</div>
+  </div>
+  <div class="qa">
+    <div class="q">3. Как тестируете?</div>
+    <div class="a">На хакатоне приоритет был на функционал. Честно: покрытие pytest в roadmap 80%+. Архитектура с service-слоем позволяет легко добавить юнит-тесты.</div>
+  </div>
+  <div class="qa">
+    <div class="q">4. Почему не использовали готовые ATS?</div>
+    <div class="a">ТЗ требовало собственное решение. Плюс готовые ATS не умеют работать с СТД-Р и российской спецификой — нам пришлось бы всё равно писать парсер.</div>
+  </div>
+  <div class="qa">
+    <div class="q">5. Что если кандидат без Telegram?</div>
+    <div class="a">Уведомления идут и в WebSocket (внутри приложения), и в Telegram — дубликат. Telegram — опционально, привязка через бота в настройках.</div>
+  </div>
+</section>
+
+<section class="slide" id="preflight">
+  <div class="slide-header"><span class="sn">✓</span><span class="tag">Pre-flight</span></div>
+  <h3>За 5 минут до защиты</h3>
+  <ul class="points">
+    <li>✅ <b>docker compose ps</b> — все сервисы healthy</li>
+    <li>✅ Открыт <b>localhost:5173</b> в браузере</li>
+    <li>✅ Открыт <b>localhost:8000/docs</b> в соседней вкладке</li>
+    <li>✅ Залогинен <b>alex_dev / candidate</b> в одном окне</li>
+    <li>✅ Залогинен <b>hr_expert / hr_pass</b> в другом</li>
+    <li>✅ Телефон на беззвучке, зарядка 100%</li>
+    <li>✅ Презентация открыта в полноэкранном режиме</li>
+  </ul>
+</section>
+
+</main>
+
+<nav class="botnav">
+  <button id="prev" aria-label="Предыдущий">← Назад</button>
+  <a class="top" href="#" aria-label="Наверх">↑</a>
+  <button id="next" aria-label="Следующий">Дальше →</button>
+</nav>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide[id^="s"]'));
+  const pbar = document.getElementById('pbar');
+  const meta = document.getElementById('meta');
+
+  function currentIndex(){
+    const y = window.scrollY + 140;
+    let i = 0;
+    for (let k=0; k<slides.length; k++){
+      if (slides[k].offsetTop <= y) i = k;
+    }
+    return i;
+  }
+  function updateProgress(){
+    const doc = document.documentElement;
+    const h = doc.scrollHeight - doc.clientHeight;
+    const p = h>0 ? (window.scrollY / h) * 100 : 0;
+    pbar.style.width = p.toFixed(1) + '%';
+    const i = currentIndex();
+    meta.textContent = (i+1) + ' / ' + slides.length + ' · ~10 мин';
+  }
+  function goto(delta){
+    const i = Math.max(0, Math.min(slides.length-1, currentIndex()+delta));
+    slides[i].scrollIntoView({behavior:'smooth', block:'start'});
+  }
+  document.getElementById('prev').addEventListener('click', ()=>goto(-1));
+  document.getElementById('next').addEventListener('click', ()=>goto(1));
+  window.addEventListener('scroll', updateProgress, {passive:true});
+  window.addEventListener('resize', updateProgress);
+  updateProgress();
+</script>
+</body>
+</html>
