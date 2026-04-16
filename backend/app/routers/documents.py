@@ -57,6 +57,38 @@ async def upload_document(
     return doc
 
 
+@router.post("/init-tg-upload")
+async def init_tg_upload(
+    doc_type: str = "other",
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("candidate")),
+):
+    if not current_user.telegram_chat_id:
+        raise HTTPException(
+            status_code=400, 
+            detail="Сначала привяжите Telegram в настройках профиля"
+        )
+    
+    profile_res = await db.execute(
+        select(CandidateProfile).where(CandidateProfile.user_id == current_user.id)
+    )
+    profile = profile_res.scalar_one_or_none()
+    if not profile:
+        raise HTTPException(status_code=400, detail="Заполните профиль")
+
+    from app.services.telegram_bot import request_telegram_upload
+    success = await request_telegram_upload(
+        current_user.telegram_chat_id, 
+        doc_type, 
+        profile.id
+    )
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Не удалось отправить запрос в Telegram")
+    
+    return {"status": "ok", "message": "Ожидаем файл в Telegram"}
+
+
 @router.get("/my", response_model=list[DocumentResponse])
 async def my_documents(
     db: AsyncSession = Depends(get_db),
@@ -78,8 +110,24 @@ async def my_documents(
 async def candidate_documents(
     candidate_id: int,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role("hr", "manager", "admin")),
+    current_user: User = Depends(require_role("hr", "manager", "admin")),
 ):
+    if current_user.role == "manager":
+        from app.models.application import Application
+        from app.models.interview import Interview
+        # Check if manager is interviewing this candidate
+        check_stmt = (
+            select(Interview)
+            .join(Application)
+            .where(
+                Application.candidate_id == candidate_id,
+                Interview.manager_id == current_user.id
+            )
+        )
+        check_res = await db.execute(check_stmt)
+        if not check_res.scalar_one_or_none():
+            raise HTTPException(status_code=403, detail="Access denied: You are not interviewing this candidate")
+
     result = await db.execute(
         select(Document).where(Document.candidate_id == candidate_id)
     )

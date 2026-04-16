@@ -1,10 +1,11 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { VueDraggable } from 'vue-draggable-plus'
 import api from '@/api/index.js'
 import AppLayout from '@/components/AppLayout.vue'
 import InterviewModal from './InterviewModal.vue'
+import { useNotificationsStore } from '@/stores/notifications'
 import {
   Users,
   Search,
@@ -230,6 +231,17 @@ async function updateAppStatus(app, newStatus) {
     await loadData()
   }
 }
+
+const notificationsStore = useNotificationsStore()
+watch(() => notificationsStore.items, (newItems, oldItems) => {
+  if (newItems.length > (oldItems?.length || 0)) {
+    const latest = newItems[0]
+    if (latest.event === 'application_new') {
+      console.log('[Kanban] New application received via WS, refreshing...')
+      loadData()
+    }
+  }
+}, { deep: true })
 </script>
 
 <template>
@@ -375,6 +387,7 @@ async function updateAppStatus(app, newStatus) {
             :group="{ name: 'kanban' }"
             :animation="250"
             @add="(e) => onColAdd(col.key, e)"
+            @scroll="activeMenu = null"
             class="flex-1 overflow-y-auto min-h-[50vh] rounded-2xl border border-brand-light-border dark:border-brand-dark-border bg-brand-light-elevated/40 dark:bg-brand-dark-elevated/20 p-3 space-y-3 custom-scrollbar"
             :class="[col.top, 'border-t-[3px]']"
           >
@@ -581,6 +594,7 @@ async function updateAppStatus(app, newStatus) {
                 :group="{ name: 'kanban' }"
                 :animation="250"
                 @add="(e) => onColAdd(col.key, e)"
+                @scroll="activeMenu = null"
                 class="min-h-[60px] rounded-xl border border-brand-light-border dark:border-brand-dark-border bg-brand-light-elevated/40 dark:bg-brand-dark-elevated/20 p-2 space-y-2"
                 :class="[col.top, 'border-t-2']"
               >

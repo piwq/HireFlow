@@ -54,10 +54,12 @@ def _tg_text(event: str, data: dict, bundle_info: dict | None = None) -> str:
         if bundle_info:
             total = bundle_info["total"]
             chats = bundle_info["chats"]
-            # Russian pluralization rules for "сообщение" and "чат" are complex, 
-            # using simple "сообщений" and "чатов" for brevity as requested.
             return f"💬 HireFlow\nУ вас {total} непрочитанных сообщений из {chats} чатов"
         return "💬 HireFlow\nУ вас новое сообщение в чате"
+    if event == "application_new":
+        candidate = data.get("candidate_name", "Кандидат")
+        vacancy = data.get("vacancy_title", "вакансию")
+        return f"🔥 HireFlow\nНовый отклик!\nКандидат: {candidate}\nНа вакансию: {vacancy}"
     return "💬 HireFlow\nНовое уведомление"
 
 

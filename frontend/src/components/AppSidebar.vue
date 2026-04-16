@@ -57,9 +57,10 @@ const navItems = computed(() => {
   ]
   if (auth.role === 'candidate') return [
     { label: 'Профиль', icon: User, to: '/candidate' },
-    { label: 'ИИ Конструктор', icon: Wand2, to: '/candidate/resume-builder' },
+    { label: 'Вакансии', icon: Briefcase, to: '/candidate/vacancies' },
     { label: 'Мои заявки', icon: ClipboardList, to: '/candidate/applications' },
     { label: 'Собеседования', icon: Video, to: '/candidate/interviews' },
+    { label: 'ИИ Конструктор', icon: Wand2, to: '/candidate/resume-builder' },
     { label: 'Чат', icon: MessageSquare, to: '/chat' },
   ]
   if (auth.role === 'admin') return [

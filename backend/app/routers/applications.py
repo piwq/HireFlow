@@ -78,6 +78,32 @@ async def create_application(
 
     await db.commit()
     await db.refresh(app)
+
+    # Notify HR about new application
+    try:
+        from app.models.user import User
+        from app.models.vacancy import Vacancy
+        from app.services.notifications import notify_user
+        
+        # Get vacancy title for the notification
+        vac_res = await db.execute(select(Vacancy.title).where(Vacancy.id == app.vacancy_id))
+        vac_title = vac_res.scalar_one_or_none() or "Вакансия"
+        
+        # Get all HR users
+        hr_res = await db.execute(select(User.id).where(User.role == 'hr'))
+        hr_ids = [r[0] for r in hr_res.all()]
+        
+        for hr_id in hr_ids:
+            await notify_user(hr_id, "application_new", {
+                "application_id": app.id,
+                "vacancy_id": app.vacancy_id,
+                "vacancy_title": vac_title,
+                "candidate_name": profile.full_name or "Кандидат",
+            })
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to notify HR about new app: {e}")
+
     return app
 
 

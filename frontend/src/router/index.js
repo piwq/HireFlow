@@ -10,6 +10,11 @@ const routes = [
     meta: { role: 'candidate' },
   },
   {
+    path: '/candidate/vacancies',
+    component: () => import('@/views/candidate/VacanciesView.vue'),
+    meta: { role: 'candidate' },
+  },
+  {
     path: '/candidate/applications',
     component: () => import('@/views/candidate/ApplicationsView.vue'),
     meta: { role: 'candidate' },

@@ -242,12 +242,57 @@ async def run_genai_with_fallback(prompt, stream=False, **kwargs):
     # Если мы дошли сюда, значит всё упало
     raise Exception(f"Ни одна из моделей ({', '.join(MODELS_TO_TRY)}) не ответила. Последняя ошибка: {str(last_err)}")
 
+def format_profile_context(profile: CandidateProfile) -> str:
+    """Helper to convert structured profile data into a string for LLM prompt."""
+    if not profile:
+        return ""
+    
+    context = f"ФИО: {profile.full_name or 'Не указано'}\n"
+    context += f"Желаемая позиция в профиле: {profile.desired_position or 'Не указано'}\n"
+    context += f"Навыки из профиля: {profile.skills or 'Не указано'}\n"
+    
+    if profile.work_experiences:
+        context += "\nОПЫТ РАБОТЫ (из профиля):\n"
+        for we in profile.work_experiences:
+            context += f"- {we.company} ({we.position}): {we.period}\n  Обязанности: {we.responsibilities}\n"
+    
+    if profile.educations:
+        context += "\nОБРАЗОВАНИЕ (из профиля):\n"
+        for edu in profile.educations:
+            context += f"- {edu.institution} ({edu.degree}, {edu.specialization}): {edu.year}\n"
+    
+    if profile.projects:
+        context += "\nПРОЕКТЫ И СЕРТИФИКАТЫ:\n"
+        for proj in profile.projects:
+            context += f"- {proj.name}: {proj.description}\n"
+    
+    return context
+
+
 @router.post("/ai/generate-stream")
 async def ai_generate_stream(
     body: ResumeGenerateRequest,
     current_user: User = Depends(require_role("candidate")),
+    db: AsyncSession = Depends(get_db),
 ):
     job_title = body.answers[0] if len(body.answers) > 0 else ""
+    
+    # Fetch profile with relationships
+    stmt = (
+        select(CandidateProfile)
+        .where(CandidateProfile.user_id == current_user.id)
+        .options(
+            selectinload(CandidateProfile.work_experiences),
+            selectinload(CandidateProfile.educations),
+            selectinload(CandidateProfile.languages),
+            selectinload(CandidateProfile.projects),
+        )
+    )
+    result = await db.execute(stmt)
+    profile = result.scalar_one_or_none()
+
+    profile_context = format_profile_context(profile)
+
     past_exp = body.answers[1] if len(body.answers) > 1 else ""
     skills = body.answers[2] if len(body.answers) > 2 else ""
     vacancy_text = body.answers[3] if len(body.answers) > 3 else ""
@@ -261,11 +306,15 @@ async def ai_generate_stream(
 ОЧЕНЬ ВАЖНО: НИКАКИХ ВСТУПИТЕЛЬНЫХ ИЛИ ЗАКЛЮЧИТЕЛЬНЫХ СЛОВ! ВЕРНИ ТОЛЬКО ИТОГОВЫЙ ТЕКСТ В MARKDOWN.
 СТРОГО ИСПОЛЬЗУЙ СЛЕДУЮЩИЙ ФОРМАТ MARKDOWN: Начинай строго с символа `#` и дальше текст резюме.
 
-Email кандидата: {current_user.email} (Сделай заголовок H1: Имя из email)
-Желаемая должность: {job_title}
+Email кандидата: {current_user.email} (Сделай заголовок H1: {profile.full_name if profile and profile.full_name else 'Имя Кандидата'})
+Желаемая должность (цель): {job_title}
 
-Прошлый опыт работы (если есть, улучши его и добавь метрики): {past_exp}
-Ключевые навыки: {skills}
+ДАННЫЕ ИЗ ПРОФИЛЯ КАНДИДАТА (Основные факты):
+{profile_context}
+
+ДОПОЛНИТЕЛЬНЫЕ ОТВЕТЫ КАНДИДАТА (Для акцентов):
+Прошлый опыт (акценты): {past_exp}
+Ключевые навыки (приоритет): {skills}
 
 Структура Markdown должна быть строго такой:
 # Имя и Фамилия
@@ -321,11 +370,30 @@ Email кандидата: {current_user.email} (Сделай заголовок 
 async def ai_enhance_stream(
     body: ResumeEnhanceStreamRequest,
     current_user: User = Depends(require_role("candidate")),
+    db: AsyncSession = Depends(get_db),
 ):
+    # Fetch profile context for better enhancements
+    stmt = (
+        select(CandidateProfile)
+        .where(CandidateProfile.user_id == current_user.id)
+        .options(
+            selectinload(CandidateProfile.work_experiences),
+            selectinload(CandidateProfile.educations),
+            selectinload(CandidateProfile.languages),
+            selectinload(CandidateProfile.projects),
+        )
+    )
+    result = await db.execute(stmt)
+    profile = result.scalar_one_or_none()
+    profile_context = format_profile_context(profile)
+
     prompt = f"""
 Ты — профессиональный HR-эксперт. Пользователь хочет внести изменения в своё текущее резюме формата Markdown.
 ОЧЕНЬ ВАЖНО: НИКАКИХ ВСТУПИТЕЛЬНЫХ ИЛИ ЗАКЛЮЧИТЕЛЬНЫХ СЛОВ! ВЕРНИ ТОЛЬКО ИТОГОВЫЙ ОБНОВЛЕННЫЙ ТЕКСТ В MARKDOWN.
 Сохраняй структуру А4 и стили.
+
+КОНТЕКСТ ПРОФИЛЯ КАНДИДАТА (Для справки о фактах):
+{profile_context}
 
 Текущее резюме:
 {body.current_content}

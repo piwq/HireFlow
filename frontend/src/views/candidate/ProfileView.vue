@@ -32,6 +32,7 @@ import {
   Video,
   ChevronRight,
   HelpCircle,
+  Smartphone,
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -65,6 +66,11 @@ const telegramLinked = ref(false)
 const telegramLinkUrl = ref('')
 const activeTab = ref('general')
 const myInterviews = ref([])
+const initiatingTgUpload = ref(false)
+const tgUploadType = ref('')
+const showUploadModal = ref(false)
+const uploadModalConfig = ref({ type: 'other', title: 'Загрузка файла', accept: '*', target: 'document' })
+const isDragging = ref(false)
 
 function scrollToTop() {
   const el = document.getElementById('main-content')
@@ -312,6 +318,128 @@ async function uploadPhoto() {
   finally { uploadingPhoto.value = false }
 }
 
+async function initTelegramUpload(docType = 'other') {
+  if (!telegramLinked.value) {
+    error.value = 'Сначала привяжите Telegram в настройках (кнопка вверху)'
+    return
+  }
+  initiatingTgUpload.value = true
+  tgUploadType.value = docType
+  error.value = ''
+  
+  try {
+    await api.post('/documents/init-tg-upload', { doc_type: docType })
+    
+    // Start polling for new documents
+    const initialCount = documents.value.length
+    const profileInitialPhoto = form.value.photo_url
+    
+    const interval = setInterval(async () => {
+      try {
+        const { data: docs } = await api.get('/documents/my')
+        const { data: profile } = await api.get('/candidates/me')
+        
+        const fileFound = docs.length > initialCount || profile.photo_url !== profileInitialPhoto
+        
+        if (fileFound) {
+          documents.value = docs
+          form.value.photo_url = profile.photo_url
+          initiatingTgUpload.value = false
+          tgUploadType.value = ''
+          clearInterval(interval)
+          showUploadModal.value = false
+          saved.value = true
+          setTimeout(() => { saved.value = false }, 3000)
+        }
+      } catch {
+        clearInterval(interval)
+        initiatingTgUpload.value = false
+      }
+    }, 3000)
+    
+    // Stop after 3 minutes
+    setTimeout(() => {
+      clearInterval(interval)
+      initiatingTgUpload.value = false
+    }, 180000)
+    
+  } catch (e) {
+    error.value = e.response?.data?.detail || 'Ошибка инициализации Telegram загрузки'
+    initiatingTgUpload.value = false
+  }
+}
+
+function openUploadModal(type = 'other', target = 'document') {
+  uploadModalConfig.value = {
+    type,
+    target, // 'document', 'photo', 'resume'
+    title: type === 'photo' ? 'Фото профиля' : type === 'resume' ? 'Резюме' : 'Документ',
+    accept: type === 'photo' ? 'image/*' : type === 'resume' ? '.pdf,.doc,.docx' : '*',
+  }
+  showUploadModal.value = true
+}
+
+async function handleFileSelect(event) {
+  const file = event.target.files[0]
+  if (!file) return
+  await processUpload(file)
+}
+
+async function handleFileDrop(event) {
+  isDragging.value = false
+  const file = event.dataTransfer.files[0]
+  if (!file) return
+  await processUpload(file)
+}
+
+async function processUpload(file) {
+  const { target, type } = uploadModalConfig.value
+  
+  if (target === 'photo') {
+    await performUpload(file, '/files/upload-resume', (url) => { form.value.photo_url = url })
+  } else if (target === 'resume') {
+    await performUpload(file, '/files/upload-resume', (url) => { form.value.resume_url = url })
+  } else {
+    await performUploadDocument(file, type)
+  }
+  
+  if (!error.value) {
+    showUploadModal.value = false
+    saved.value = true
+    setTimeout(() => { saved.value = false }, 3000)
+  }
+}
+
+async function performUpload(file, endpoint, callback) {
+  const fd = new FormData()
+  fd.append('file', file)
+  try {
+    saving.value = true
+    const { data } = await api.post(endpoint, fd)
+    callback(data.url)
+    await saveProfile()
+  } catch {
+    error.value = 'Ошибка загрузки файла'
+  } finally {
+    saving.value = false
+  }
+}
+
+async function performUploadDocument(file, type) {
+  const fd = new FormData()
+  fd.append('file', file)
+  fd.append('doc_type', type)
+  try {
+    uploadingDoc.value = true
+    const { data } = await api.post('/documents/upload', fd)
+    documents.value.push(data)
+  } catch {
+    error.value = 'Ошибка загрузки документа'
+  } finally {
+    uploadingDoc.value = false
+  }
+}
+
 // Structured profile CRUD
 async function addWorkExperience() {
   if (!profileId.value) return
@@ -483,14 +611,13 @@ const completeness = computed(() => {
         <div class="p-6 border-b border-brand-light-border dark:border-brand-dark-border">
           <div class="flex flex-col items-center text-center gap-4">
             <div class="relative group">
-              <div class="w-24 h-24 rounded-3xl bg-brand-light-elevated dark:bg-brand-dark-elevated border-2 border-dashed border-brand-light-border dark:border-brand-dark-border flex items-center justify-center overflow-hidden cursor-pointer hover:border-brand-accent transition-all ring-4 ring-brand-accent/5" @click="photoInput.click()">
+              <div class="w-24 h-24 rounded-3xl bg-brand-light-elevated dark:bg-brand-dark-elevated border-2 border-dashed border-brand-light-border dark:border-brand-dark-border flex items-center justify-center overflow-hidden cursor-pointer hover:border-brand-accent transition-all ring-4 ring-brand-accent/5" @click="openUploadModal('photo', 'photo')">
                 <img v-if="form.photo_url" :src="form.photo_url" class="w-full h-full object-cover" />
                 <Camera v-else class="w-8 h-8 text-brand-light-muted" />
                 <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                   <Upload class="w-6 h-6 text-white" />
                 </div>
               </div>
-              <input ref="photoInput" type="file" accept="image/*" class="hidden" @change="uploadPhoto" />
             </div>
             
             <div class="space-y-1">
@@ -1014,7 +1141,7 @@ const completeness = computed(() => {
 
               <input ref="fileInput" type="file" accept=".pdf,.doc,.docx" class="hidden" @change="uploadResume" />
               <div
-                @click="fileInput.click()"
+                @click="openUploadModal('resume', 'resume')"
                 class="border-2 border-dashed border-brand-light-border dark:border-brand-dark-border hover:border-brand-accent dark:hover:border-brand-accent rounded-3xl p-10 cursor-pointer transition-all group text-center space-y-4"
               >
                 <div class="w-16 h-16 rounded-2xl bg-brand-light-elevated dark:bg-brand-dark-elevated flex items-center justify-center mx-auto group-hover:scale-110 group-hover:shadow-xl transition-all">
@@ -1059,14 +1186,11 @@ const completeness = computed(() => {
                   <select v-model="selectedDocType" class="bg-brand-light-elevated dark:bg-brand-dark-elevated border border-brand-light-border dark:border-brand-dark-border rounded-xl px-3 py-2 text-xs font-bold outline-none">
                     <option v-for="dt in DOC_TYPES" :key="dt.value" :value="dt.value">{{ dt.label }}</option>
                   </select>
-                  <input ref="docFileInput" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="hidden" @change="uploadDocument" />
                   <button
-                    @click="docFileInput.click()"
-                    :disabled="uploadingDoc"
-                    class="p-2.5 bg-brand-accent text-white rounded-xl shadow-lg shadow-brand-accent/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                    @click="openUploadModal(selectedDocType, 'document')"
+                    class="px-5 py-2 text-brand-accent bg-brand-accent/5 hover:bg-brand-accent/10 border border-brand-accent/20 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
                   >
-                    <Upload v-if="!uploadingDoc" class="w-5 h-5" />
-                    <Loader2 v-else class="w-5 h-5 animate-spin" />
+                    Загрузить
                   </button>
                 </div>
               </div>
@@ -1259,7 +1383,100 @@ const completeness = computed(() => {
         </div>
       </div>
     </div>
+    <!-- Upload Modal -->
+    <div v-if="showUploadModal" @click.self="showUploadModal = false" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-brand-dark-bg/80 backdrop-blur-md animate-in fade-in duration-300">
+      <div class="bg-brand-light-surface dark:bg-brand-dark-surface w-full max-w-xl rounded-[2.5rem] border border-brand-light-border dark:border-brand-dark-border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+        <div class="p-8 md:p-10 space-y-8">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-brand-accent/10 flex items-center justify-center shrink-0">
+                <Upload class="text-brand-accent w-6 h-6" />
+              </div>
+              <div>
+                <h3 class="text-heading text-brand-light-primary dark:text-brand-dark-primary">{{ uploadModalConfig.title }}</h3>
+                <p class="text-caption text-brand-light-secondary dark:text-brand-dark-secondary text-sm">Выберите удобный способ загрузки</p>
+              </div>
+            </div>
+            <button @click="showUploadModal = false" class="p-3 text-brand-light-muted hover:bg-brand-light-elevated dark:hover:bg-brand-dark-elevated rounded-2xl transition-all">
+              <Plus class="w-6 h-6 rotate-45" />
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
+            <!-- Classic Upload -->
+            <div class="space-y-4">
+              <label class="text-micro font-black text-brand-light-muted dark:text-brand-dark-muted uppercase tracking-widest pl-1">Локальный файл</label>
+              <div
+                @click="$refs.modalFileInput.click()"
+                @dragover.prevent="isDragging = true"
+                @dragleave.prevent="isDragging = false"
+                @drop.prevent="handleFileDrop"
+                :class="[
+                  'min-h-[260px] rounded-[2rem] border-2 border-dashed flex flex-col items-center justify-center gap-4 cursor-pointer transition-all group p-6 text-center',
+                  isDragging ? 'border-brand-accent bg-brand-accent/5 scale-[1.02]' : 'border-brand-light-border dark:border-brand-dark-border hover:border-brand-accent/40 bg-brand-light-elevated dark:bg-brand-dark-elevated'
+                ]"
+              >
+                <input ref="modalFileInput" type="file" :accept="uploadModalConfig.accept" class="hidden" @change="handleFileSelect" />
+                <div class="w-16 h-16 rounded-2xl bg-brand-light-surface dark:bg-brand-dark-surface flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:shadow-brand-accent/10 transition-all">
+                  <Upload class="w-8 h-8 text-brand-light-muted group-hover:text-brand-accent transition-colors" />
+                </div>
+                <div class="space-y-1">
+                  <p class="text-sm font-bold text-brand-light-primary dark:text-brand-dark-primary">Нажмите или перетащите</p>
+                  <p class="text-xs text-brand-light-secondary dark:text-brand-dark-secondary">Поддерживается: {{ uploadModalConfig.accept === 'image/*' ? 'Фото' : 'PDF/Word' }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Telegram Upload -->
+            <div class="space-y-4">
+              <label class="text-micro font-black text-brand-light-muted dark:text-brand-dark-muted uppercase tracking-widest pl-1">Telegram Бот</label>
+              <div 
+                class="min-h-[260px] rounded-[2rem] bg-brand-accent/5 border border-brand-accent/10 p-6 flex flex-col justify-between relative overflow-hidden group"
+              >
+                <div class="space-y-4 relative z-10">
+                  <div class="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center">
+                    <Smartphone class="text-brand-accent w-5 h-5" />
+                  </div>
+                  <div class="space-y-2">
+                    <h4 class="text-sm font-bold text-brand-light-primary dark:text-brand-dark-primary">Загрузка через телефон</h4>
+                    <p class="text-[11px] leading-relaxed text-brand-light-secondary dark:text-brand-dark-secondary">
+                      Мы отправим запрос в ваш Telegram. Сделайте фото или выберите файл в чате с телефона.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="relative z-10 pt-4">
+                  <button 
+                    @click="initTelegramUpload(uploadModalConfig.type)"
+                    :disabled="initiatingTgUpload || !telegramLinked"
+                    :class="[
+                      'w-full py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2',
+                      telegramLinked 
+                        ? 'bg-brand-accent text-white shadow-lg shadow-brand-accent/20 hover:scale-[1.02] active:scale-[0.98]' 
+                        : 'bg-brand-light-border dark:bg-brand-dark-border text-brand-light-muted cursor-not-allowed'
+                    ]"
+                  >
+                    <Loader2 v-if="initiatingTgUpload" class="w-3.5 h-3.5 animate-spin" />
+                    <Smartphone v-else class="w-3.5 h-3.5" />
+                    {{ initiatingTgUpload ? 'Ждем...' : telegramLinked ? 'Запросить в TG' : 'Не привязан' }}
+                  </button>
+                  <p v-if="!telegramLinked" class="text-[9px] text-center mt-2 text-brand-light-muted italic">Нужна привязка</p>
+                </div>
+
+                <!-- Abstract background shapes -->
+                <div class="absolute -top-12 -right-12 w-32 h-32 bg-brand-accent/5 rounded-full blur-3xl group-hover:bg-brand-accent/10 transition-all" />
+              </div>
+            </div>
+          </div>
+
+          <div v-if="error" class="p-4 bg-red-500/5 border border-red-500/10 rounded-2xl text-red-500 text-xs font-bold text-center animate-in slide-in-from-top-2">
+            {{ error }}
+          </div>
+        </div>
+      </div>
+    </div>
 </template>
+
 
 <style scoped>
 .input-field {

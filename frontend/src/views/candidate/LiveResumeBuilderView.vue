@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import html2pdf from 'html2pdf.js'
 import { Wand2, Download, ChevronRight, ChevronLeft, Loader2, FileText, Sparkles, PenTool, LayoutTemplate, Save, Check, RefreshCw, Eye, ArrowLeft } from 'lucide-vue-next'
 
@@ -43,7 +44,7 @@ const canEnhance = computed(() => {
 let saveTimeout = null
 watch(streamedMarkdown, (newVal) => {
   if (isStreamingDone.value && !loading.value) {
-    streamedHtml.value = marked.parse(newVal)
+    streamedHtml.value = DOMPurify.sanitize(marked.parse(newVal))
     
     savingStatus.value = 'saving'
     clearTimeout(saveTimeout)
@@ -94,7 +95,7 @@ async function loadDraft() {
             const data = await res.json()
             if (data.content && data.content.trim().length > 0) {
                 streamedMarkdown.value = data.content
-                streamedHtml.value = marked.parse(data.content)
+                streamedHtml.value = DOMPurify.sanitize(marked.parse(data.content))
                 isStreamingDone.value = true
             }
         }
@@ -238,7 +239,7 @@ async function exportPdf() {
   if (emptyPlaceholder) emptyPlaceholder.remove()
 
   const opt = {
-      margin: 0, 
+      margin: 10,  // Add some margin for safety
       filename: `resume_${currentTheme.value}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { 
@@ -247,7 +248,8 @@ async function exportPdf() {
         letterRendering: true,
         logging: false
       },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
   }
   
   try {
@@ -546,6 +548,14 @@ onUnmounted(() => {
   text-align: left !important;
 }
 
+.theme-classic :deep(.rendered-markdown h3),
+.theme-classic :deep(.rendered-markdown p),
+.theme-classic :deep(.rendered-markdown li),
+.theme-classic :deep(.rendered-markdown h1),
+.theme-classic :deep(.rendered-markdown h2) {
+  break-inside: avoid !important;
+}
+
 .theme-classic :deep(.rendered-markdown h1) {
   font-size: 26pt !important;
   font-weight: 900 !important;
@@ -647,6 +657,14 @@ onUnmounted(() => {
   font-size: 10.5pt !important;
   line-height: 1.6 !important;
   text-align: left !important;
+}
+
+.theme-tech :deep(.rendered-markdown h3),
+.theme-tech :deep(.rendered-markdown p),
+.theme-tech :deep(.rendered-markdown li),
+.theme-tech :deep(.rendered-markdown h1),
+.theme-tech :deep(.rendered-markdown h2) {
+  break-inside: avoid !important;
 }
 
 .theme-tech :deep(.rendered-markdown h1) {

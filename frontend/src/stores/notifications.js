@@ -24,6 +24,8 @@ function buildText(event, data) {
         : 'Ваш запрос на интервью отклонён'
     case 'new_message':
       return 'Новое сообщение в чате'
+    case 'application_new':
+      return `Новый отклик от ${data.candidate_name || 'кандидата'} на вакансию ${data.vacancy_title || ''}`
     default:
       return 'Новое уведомление'
   }
@@ -36,6 +38,7 @@ function buildIcon(event) {
     case 'interview_assigned': return '📅'
     case 'interview_request_new': return '🔔'
     case 'interview_request_updated': return '✅'
+    case 'application_new': return '🔥'
     default: return '💬'
   }
 }

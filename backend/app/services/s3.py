@@ -53,10 +53,14 @@ def _put_object(bucket: str, key: str, body: bytes, content_type: str) -> None:
 
 
 async def upload_file(file: UploadFile) -> str:
-    ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "bin"
-    key = f"{uuid4().hex}.{ext}"
     content = await file.read()
+    return await upload_bytes(content, file.filename, file.content_type)
+
+
+async def upload_bytes(content: bytes, filename: str, content_type: str) -> str:
+    ext = filename.rsplit(".", 1)[-1] if "." in filename else "bin"
+    key = f"{uuid4().hex}.{ext}"
     await asyncio.to_thread(
-        _put_object, settings.minio_bucket, key, content, file.content_type
+        _put_object, settings.minio_bucket, key, content, content_type
     )
     return f"{settings.minio_public_url}/{settings.minio_bucket}/{key}"
