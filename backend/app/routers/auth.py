@@ -39,7 +39,7 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     await db.refresh(user)
 
     token = create_token(user.id, user.role.value)
-    return TokenResponse(access_token=token, role=user.role)
+    return TokenResponse(access_token=token, role=user.role, user_id=user.id, email=user.email)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -51,4 +51,4 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = create_token(user.id, user.role.value)
-    return TokenResponse(access_token=token, role=user.role)
+    return TokenResponse(access_token=token, role=user.role, user_id=user.id, email=user.email)

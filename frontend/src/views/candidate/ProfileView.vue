@@ -4,20 +4,24 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.js'
 import { useThemeStore } from '@/stores/theme.js'
 import api from '@/api/index.js'
-import { 
-  User, 
-  FileText, 
-  Briefcase, 
-  Plus, 
-  Check, 
-  Loader2, 
-  LogOut, 
-  Sun, 
+import {
+  User,
+  FileText,
+  Briefcase,
+  Plus,
+  Check,
+  Loader2,
+  LogOut,
+  Sun,
   Moon,
   ExternalLink,
   Upload,
   Zap,
-  ChevronDown
+  ChevronDown,
+  ClipboardList,
+  Calendar,
+  Video,
+  Clock,
 } from 'lucide-vue-next'
 
 const auth = useAuthStore()
@@ -31,9 +35,26 @@ const saving = ref(false)
 const saved = ref(false)
 const error = ref('')
 const vacancies = ref([])
+const myApps = ref([])
+const myInterviews = ref([])
 const applying = ref(false)
 const applied = ref(false)
 const selectedVacancy = ref('')
+
+const STATUS_LABELS = {
+  new: 'Новый',
+  screening: 'Скрининг',
+  interview: 'Интервью',
+  hired: 'Нанят',
+  rejected: 'Отказ',
+}
+const STATUS_COLORS = {
+  new: 'bg-brand-status-new/10 text-brand-status-new',
+  screening: 'bg-brand-status-screening/10 text-brand-status-screening',
+  interview: 'bg-brand-status-interview/10 text-brand-status-interview',
+  hired: 'bg-brand-status-hired/10 text-brand-status-hired',
+  rejected: 'bg-brand-status-rejected/10 text-brand-status-rejected',
+}
 
 onMounted(async () => {
   try {
@@ -43,9 +64,18 @@ onMounted(async () => {
     // profile not created yet
   }
   try {
-    const { data } = await api.get('/vacancies/')
-    vacancies.value = data
-    if (data.length) selectedVacancy.value = data[0].id
+    const [vacRes, appsRes, interviewsRes] = await Promise.all([
+      api.get('/vacancies/'),
+      api.get('/applications/my'),
+      api.get('/interviews/my'),
+    ])
+    vacancies.value = vacRes.data
+    myApps.value = appsRes.data
+    myInterviews.value = interviewsRes.data
+    const appliedIds = new Set(appsRes.data.map(a => a.vacancy_id))
+    const available = vacRes.data.find(v => !appliedIds.has(v.id))
+    if (available) selectedVacancy.value = available.id
+    else if (vacRes.data.length) selectedVacancy.value = vacRes.data[0].id
   } catch {}
 })
 
@@ -59,7 +89,7 @@ async function uploadResume() {
     fd.append('file', file)
     const { data } = await api.post('/files/upload-resume', fd)
     form.value.resume_url = data.url
-  } catch (e) {
+  } catch {
     error.value = 'Ошибка загрузки файла'
   } finally {
     uploading.value = false
@@ -87,15 +117,39 @@ async function saveProfile() {
 async function applyToVacancy() {
   if (!selectedVacancy.value) return
   applying.value = true
+  error.value = ''
   try {
-    await api.post('/applications/', { vacancy_id: selectedVacancy.value })
+    const { data } = await api.post('/applications/', { vacancy_id: selectedVacancy.value })
+    myApps.value.unshift(data)
     applied.value = true
     setTimeout(() => (applied.value = false), 3000)
+    const appliedIds = new Set(myApps.value.map(a => a.vacancy_id))
+    const next = vacancies.value.find(v => !appliedIds.has(v.id))
+    selectedVacancy.value = next ? next.id : vacancies.value[0]?.id
   } catch (e) {
     error.value = e.response?.data?.detail || 'Ошибка отклика'
   } finally {
     applying.value = false
   }
+}
+
+function vacancyTitle(vacancyId) {
+  return vacancies.value.find(v => v.id === vacancyId)?.title || `Вакансия #${vacancyId}`
+}
+
+function interviewVacancyTitle(interview) {
+  const app = myApps.value.find(a => a.id === interview.application_id)
+  return app ? vacancyTitle(app.vacancy_id) : `Заявка #${interview.application_id}`
+}
+
+function formatInterviewDate(dt) {
+  return new Date(dt).toLocaleString('ru-RU', {
+    day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
+  })
+}
+
+function isUpcoming(dt) {
+  return new Date(dt) > new Date()
 }
 
 function logout() {
@@ -106,7 +160,7 @@ function logout() {
 
 <template>
   <div class="min-h-screen bg-brand-light-base dark:bg-brand-dark-base antialiased font-sans">
-    <!-- Header — Simple for Candidate -->
+    <!-- Header -->
     <header class="bg-brand-light-surface dark:bg-brand-dark-surface border-b border-brand-light-border dark:border-brand-dark-border px-6 py-4 sticky top-0 z-10">
       <div class="max-w-3xl mx-auto flex items-center justify-between">
         <div class="flex items-center gap-3">
@@ -139,10 +193,47 @@ function logout() {
     </header>
 
     <main class="max-w-3xl mx-auto p-6 space-y-8">
-      <!-- Welcome Section -->
       <section>
         <h2 class="text-display text-brand-light-primary dark:text-brand-dark-primary mb-1">Ваш профиль</h2>
         <p class="text-body text-brand-light-secondary dark:text-brand-dark-secondary">Управляйте вашими данными и находите лучшие предложения</p>
+      </section>
+
+      <!-- Upcoming interviews -->
+      <section v-if="myInterviews.length > 0">
+        <div class="flex items-center gap-3 mb-4">
+          <Video class="w-5 h-5 text-brand-status-interview" />
+          <h2 class="text-heading text-brand-light-primary dark:text-brand-dark-primary">Собеседования</h2>
+        </div>
+        <div class="space-y-3">
+          <div
+            v-for="interview in myInterviews"
+            :key="interview.id"
+            class="bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border rounded-2xl px-5 py-4 flex items-center justify-between gap-4"
+            :class="isUpcoming(interview.scheduled_at) ? 'border-brand-status-interview/40' : ''"
+          >
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-10 h-10 rounded-xl bg-brand-status-interview/10 border border-brand-status-interview/20 flex items-center justify-center shrink-0">
+                <Calendar class="w-5 h-5 text-brand-status-interview" />
+              </div>
+              <div class="min-w-0">
+                <p class="font-semibold text-brand-light-primary dark:text-brand-dark-primary text-sm truncate">
+                  {{ interviewVacancyTitle(interview) }}
+                </p>
+                <p class="text-caption text-brand-light-secondary dark:text-brand-dark-secondary mt-0.5 flex items-center gap-1">
+                  <Clock class="w-3 h-3" />
+                  {{ formatInterviewDate(interview.scheduled_at) }}
+                </p>
+              </div>
+            </div>
+            <button
+              @click="router.push(`/call/${interview.room_code}`)"
+              class="flex items-center gap-2 px-4 py-2 bg-brand-status-interview/10 hover:bg-brand-status-interview/20 text-brand-status-interview rounded-xl text-sm font-bold transition-all shrink-0"
+            >
+              <Video class="w-4 h-4" />
+              Войти
+            </button>
+          </div>
+        </div>
       </section>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -162,7 +253,7 @@ function logout() {
                 <input
                   v-model="form.full_name"
                   type="text"
-                  placeholder="Константинопольский Константин"
+                  placeholder="Иванов Иван Иванович"
                   class="w-full bg-brand-light-elevated dark:bg-brand-dark-elevated border border-brand-light-border dark:border-brand-dark-border rounded-xl px-4 py-3 text-body text-brand-light-primary dark:text-brand-dark-primary placeholder-brand-light-muted dark:placeholder-brand-dark-muted focus:outline-none focus:border-brand-accent focus:ring-4 focus:ring-brand-accent/10 transition-all"
                 />
               </div>
@@ -189,7 +280,6 @@ function logout() {
             </div>
 
             <div v-if="error" class="flex items-start gap-3 bg-red-500/5 border border-red-500/20 rounded-xl p-4">
-              <Loader2 v-if="loading" class="w-5 h-5 animate-spin" />
               <p class="text-caption text-red-500">{{ error }}</p>
             </div>
 
@@ -209,7 +299,7 @@ function logout() {
           </div>
         </div>
 
-        <!-- Sidebar Actions -->
+        <!-- Sidebar -->
         <div class="space-y-6">
           <!-- Resume Upload -->
           <div class="bg-brand-light-surface dark:bg-brand-dark-surface rounded-3xl border border-brand-light-border dark:border-brand-dark-border shadow-xl shadow-brand-accent/5 p-6 space-y-4">
@@ -217,7 +307,7 @@ function logout() {
               <FileText class="w-5 h-5 text-brand-accent" />
               Резюме
             </h3>
-            
+
             <input ref="fileInput" type="file" accept=".pdf,.doc,.docx" class="hidden" @change="uploadResume" />
             <div
               @click="fileInput.click()"
@@ -246,13 +336,19 @@ function logout() {
             </div>
           </div>
 
-          <!-- Quick Actions -->
-          <div v-if="vacancies.length" class="bg-brand-light-surface dark:bg-brand-dark-surface rounded-3xl border border-brand-light-border dark:border-brand-dark-border shadow-xl shadow-brand-accent/5 p-6 space-y-4">
+          <!-- Apply to vacancy -->
+          <div class="bg-brand-light-surface dark:bg-brand-dark-surface rounded-3xl border border-brand-light-border dark:border-brand-dark-border shadow-xl shadow-brand-accent/5 p-6 space-y-4">
             <h3 class="text-heading text-brand-light-primary dark:text-brand-dark-primary flex items-center gap-2">
               <Zap class="w-5 h-5 text-brand-status-new" />
               Откликнуться
             </h3>
-            <div class="space-y-3">
+
+            <div v-if="vacancies.length === 0" class="flex flex-col items-center justify-center py-4 text-center gap-2">
+              <Briefcase class="w-8 h-8 text-brand-light-muted dark:text-brand-dark-muted" />
+              <p class="text-caption text-brand-light-secondary dark:text-brand-dark-secondary">Вакансий пока нет</p>
+            </div>
+
+            <div v-else class="space-y-3">
               <div class="relative">
                 <select
                   v-model="selectedVacancy"
@@ -279,6 +375,41 @@ function logout() {
           </div>
         </div>
       </div>
+
+      <!-- My Applications -->
+      <section>
+        <div class="flex items-center gap-3 mb-4">
+          <ClipboardList class="w-5 h-5 text-brand-accent" />
+          <h2 class="text-heading text-brand-light-primary dark:text-brand-dark-primary">Мои заявки</h2>
+        </div>
+
+        <div v-if="myApps.length === 0" class="bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border rounded-2xl px-5 py-8 flex flex-col items-center gap-2 text-center">
+          <ClipboardList class="w-8 h-8 text-brand-light-muted dark:text-brand-dark-muted" />
+          <p class="text-body text-brand-light-secondary dark:text-brand-dark-secondary">Вы ещё не откликались на вакансии</p>
+          <p class="text-caption text-brand-light-muted dark:text-brand-dark-muted">Выберите вакансию выше и отправьте отклик</p>
+        </div>
+
+        <div v-else class="space-y-3">
+          <div
+            v-for="app in myApps"
+            :key="app.id"
+            class="bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border rounded-2xl px-5 py-4 flex items-center justify-between gap-4"
+          >
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-9 h-9 rounded-lg bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-center shrink-0">
+                <Briefcase class="w-4.5 h-4.5 text-brand-accent" />
+              </div>
+              <div class="min-w-0">
+                <p class="font-semibold text-brand-light-primary dark:text-brand-dark-primary text-sm truncate">{{ vacancyTitle(app.vacancy_id) }}</p>
+                <p class="text-caption text-brand-light-muted dark:text-brand-dark-muted mt-0.5">Заявка #{{ app.id }}</p>
+              </div>
+            </div>
+            <span :class="['text-micro rounded-lg px-2.5 py-1 font-bold shrink-0', STATUS_COLORS[app.status]]">
+              {{ STATUS_LABELS[app.status] }}
+            </span>
+          </div>
+        </div>
+      </section>
     </main>
   </div>
 </template>

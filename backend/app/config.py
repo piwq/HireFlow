@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     minio_bucket: str = "resumes"
     minio_public_url: str = "http://localhost:9000"
 
+    livekit_api_key: str = "devkey"
+    livekit_api_secret: str = "secret"
+
     class Config:
         env_file = ".env"
 

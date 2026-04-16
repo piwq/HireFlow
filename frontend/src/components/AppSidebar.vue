@@ -3,15 +3,17 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.js'
 import { useThemeStore } from '@/stores/theme.js'
-import { 
-  Users, 
-  Briefcase, 
-  Calendar, 
-  FileText, 
-  Sun, 
-  Moon, 
+import {
+  Users,
+  Briefcase,
+  Calendar,
+  FileText,
+  Sun,
+  Moon,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  X,
+  MessageSquare,
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -28,10 +30,12 @@ const navItems = computed(() => {
   if (auth.role === 'hr') return [
     { label: 'Кандидаты', icon: Users, to: '/hr' },
     { label: 'Вакансии', icon: Briefcase, to: '/hr/vacancies' },
+    { label: 'Чат', icon: MessageSquare, to: '/chat' },
   ]
   if (auth.role === 'manager') return [
     { label: 'Интервью', icon: Calendar, to: '/manager' },
     { label: 'Отзывы', icon: FileText, to: '/manager/reviews' },
+    { label: 'Чат', icon: MessageSquare, to: '/chat' },
   ]
   return []
 })

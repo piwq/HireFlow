@@ -1,29 +1,26 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '@/api/index.js'
-import AppLayout from '@/components/AppLayout.vue'
-import { 
-  Video, 
-  MessageSquare, 
-  Calendar, 
-  User, 
-  Mail, 
-  Search, 
-  Loader2, 
-  Check, 
-  MoreHorizontal,
+import {
+  Video,
+  MessageSquare,
+  Calendar,
+  Mail,
+  Loader2,
+  Check,
   X,
   FileText,
-  Briefcase,
-  ChevronDown
+  ExternalLink,
 } from 'lucide-vue-next'
+
+const router = useRouter()
 
 const interviews = ref([])
 const candidates = ref([])
 const applications = ref([])
 const feedbackText = ref({})
 const submitted = ref({})
-const jitsiOpen = ref({})
 const loading = ref(false)
 
 const showSchedule = ref(false)
@@ -113,8 +110,8 @@ async function submitFeedback(interview) {
   } catch {}
 }
 
-function toggleJitsi(id) {
-  jitsiOpen.value[id] = !jitsiOpen.value[id]
+function joinCall(roomCode) {
+  router.push(`/call/${roomCode}`)
 }
 
 function formatDate(dt) {
@@ -123,7 +120,7 @@ function formatDate(dt) {
 </script>
 
 <template>
-  <div class="p-4 md:p-8 max-w-4xl mx-auto bg-brand-light-base dark:bg-brand-dark-base min-h-full antialiased">
+  <div class="p-4 md:p-8 max-w-4xl mx-auto bg-brand-light-base dark:bg-brand-dark-base antialiased">
     <!-- Page header -->
     <div class="mb-8 md:mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
@@ -233,28 +230,12 @@ function formatDate(dt) {
                 </div>
               </div>
               <button
-                @click="toggleJitsi(interview.id)"
-                :class="[
-                  'w-full md:w-auto shrink-0 flex items-center justify-center gap-2.5 px-6 py-3 text-sm md:text-body font-bold rounded-2xl transition-all shadow-lg',
-                  jitsiOpen[interview.id]
-                    ? 'bg-brand-light-elevated dark:bg-brand-dark-elevated text-brand-light-primary dark:text-brand-dark-primary'
-                    : 'bg-brand-accent hover:opacity-90 text-white shadow-brand-accent/20 active:scale-[0.98]'
-                ]"
+                @click="joinCall(interview.room_code)"
+                class="w-full md:w-auto shrink-0 flex items-center justify-center gap-2.5 px-6 py-3 text-sm md:text-body font-bold rounded-2xl transition-all shadow-lg bg-brand-accent hover:bg-brand-accent-hover text-white shadow-brand-accent/20 active:scale-[0.98]"
               >
-                <Video v-if="!jitsiOpen[interview.id]" class="w-5 h-5" />
-                <X v-else class="w-5 h-5" />
-                {{ jitsiOpen[interview.id] ? 'Завершить звонок' : 'Начать собеседование' }}
+                <Video class="w-5 h-5" />
+                Начать собеседование
               </button>
-            </div>
-
-            <!-- Jitsi iframe -->
-            <div v-if="jitsiOpen[interview.id]" class="border-y border-brand-light-border dark:border-brand-dark-border bg-black">
-              <iframe
-                :src="`https://meet.jit.si/hireflow-${interview.room_code}`"
-                allow="camera; microphone; fullscreen; display-capture"
-                class="w-full h-[300px] md:h-[500px]"
-                frameborder="0"
-              />
             </div>
 
             <!-- Skills -->

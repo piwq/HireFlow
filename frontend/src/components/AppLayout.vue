@@ -26,7 +26,7 @@ const sidebarOpen = ref(false)
 
     <AppSidebar :open="sidebarOpen" @close="sidebarOpen = false" />
     
-    <main class="flex-1 overflow-auto pt-16 lg:pt-0">
+    <main class="flex-1 overflow-auto pt-16 lg:pt-0 flex flex-col">
       <slot />
     </main>
   </div>

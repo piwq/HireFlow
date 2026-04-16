@@ -7,9 +7,14 @@ import AppLayout from '@/components/AppLayout.vue'
 const theme = useThemeStore()
 const route = useRoute()
 
-// Candidate doesn't have sidebar as per Brandbook
+// Only HR and Manager get the sidebar layout
 const useLayout = computed(() => {
-  return route.meta.role === 'hr' || route.meta.role === 'manager'
+  const userRole = localStorage.getItem('role') || ''
+  if (userRole !== 'hr' && userRole !== 'manager') return false
+  const { role, roles } = route.meta
+  if (role === 'hr' || role === 'manager') return true
+  if (roles?.includes('hr') || roles?.includes('manager')) return true
+  return false
 })
 </script>
 

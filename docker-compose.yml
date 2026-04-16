@@ -68,11 +68,21 @@ services:
       - ./backend:/app
     command: sh entrypoint.sh
 
+  livekit:
+    image: livekit/livekit-server:latest
+    command: --dev
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "50100-50200:50100-50200/udp"
+
   frontend:
     build: ./frontend
     ports:
       - "5173:5173"
     command: npm run dev -- --host
+    volumes:
+      - ./frontend/src:/app/src
 
 volumes:
   postgres_data:

@@ -15,9 +15,29 @@ const routes = [
     meta: { role: 'hr' },
   },
   {
+    path: '/hr/vacancies',
+    component: () => import('@/views/hr/VacanciesView.vue'),
+    meta: { role: 'hr' },
+  },
+  {
     path: '/manager',
     component: () => import('@/views/manager/ReviewView.vue'),
     meta: { role: 'manager' },
+  },
+  {
+    path: '/manager/reviews',
+    component: () => import('@/views/manager/ManagerReviewsView.vue'),
+    meta: { role: 'manager' },
+  },
+  {
+    path: '/chat',
+    component: () => import('@/views/chat/ChatView.vue'),
+    meta: { roles: ['hr', 'manager'] },
+  },
+  {
+    path: '/call/:roomCode',
+    component: () => import('@/views/VideoCallView.vue'),
+    meta: { roles: ['hr', 'manager', 'candidate'] },
   },
 ]
 
@@ -38,7 +58,13 @@ router.beforeEach((to) => {
     return `/${role}`
   }
 
+  // Single role restriction
   if (to.meta.role && to.meta.role !== role) {
+    return `/${role}`
+  }
+
+  // Multi-role restriction
+  if (to.meta.roles && !to.meta.roles.includes(role)) {
     return `/${role}`
   }
 })

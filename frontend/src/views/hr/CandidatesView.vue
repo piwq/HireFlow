@@ -1,22 +1,26 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { VueDraggable } from 'vue-draggable-plus'
 import api from '@/api/index.js'
 import AppLayout from '@/components/AppLayout.vue'
 import InterviewModal from './InterviewModal.vue'
-import { 
-  Users, 
-  Search, 
-  Filter, 
-  FileText, 
-  ExternalLink, 
-  Calendar, 
+import {
+  Users,
+  Search,
+  Filter,
+  FileText,
+  ExternalLink,
+  Calendar,
   Plus,
   Loader2,
   MoreHorizontal,
   Mail,
-  X
+  X,
+  Video,
 } from 'lucide-vue-next'
+
+const router = useRouter()
 
 const STATUSES = ['new', 'screening', 'interview', 'hired', 'rejected']
 
@@ -32,12 +36,13 @@ const colApps = ref({
   new: [], screening: [], interview: [], hired: [], rejected: [],
 })
 const candidates = ref([])
+const interviews = ref([])
 const search = ref('')
 const allApps = ref([])
 const loading = ref(true)
 const showModal = ref(false)
 const selectedApp = ref(null)
-const activeMenu = ref(null) // ID of the application with open menu
+const activeMenu = ref(null)
 const menuEl = ref(null)
 
 onMounted(loadData)
@@ -46,13 +51,15 @@ async function loadData() {
   console.log('[CandidatesView] Starting data load...')
   loading.value = true
   try {
-    const [appsRes, candidatesRes] = await Promise.all([
+    const [appsRes, candidatesRes, interviewsRes] = await Promise.all([
       api.get('/applications/'),
       api.get('/candidates/'),
+      api.get('/interviews/'),
     ])
     console.log('[CandidatesView] Data loaded:', appsRes.data.length, 'apps,', candidatesRes.data.length, 'candidates')
     candidates.value = candidatesRes.data
     allApps.value = appsRes.data
+    interviews.value = interviewsRes.data
     updateColApps()
   } catch (err) {
     console.error('[CandidatesView] Load error:', err)
@@ -86,6 +93,10 @@ onUnmounted(() => window.removeEventListener('click', closeMenuHandler))
 
 function candidateForApp(app) {
   return candidates.value.find((c) => c.id === app.candidate_id)
+}
+
+function interviewForApp(app) {
+  return interviews.value.find((i) => i.application_id === app.id)
 }
 
 function initials(name) {
@@ -291,14 +302,24 @@ async function updateAppStatus(app, newStatus) {
                   РЕЗЮМЕ
                 </a>
                 
-                <button
-                  v-if="app.status === 'interview'"
-                  @click="openInterviewModal(app)"
-                  class="flex items-center gap-1 text-micro font-bold text-brand-status-interview hover:opacity-80 transition-opacity uppercase"
-                >
-                  <Calendar class="w-3.5 h-3.5" />
-                  Запись
-                </button>
+                <template v-if="app.status === 'interview'">
+                  <button
+                    v-if="interviewForApp(app)"
+                    @click="router.push(`/call/${interviewForApp(app).room_code}`)"
+                    class="flex items-center gap-1 text-micro font-bold text-brand-status-interview hover:opacity-80 transition-opacity uppercase"
+                  >
+                    <Video class="w-3.5 h-3.5" />
+                    Войти
+                  </button>
+                  <button
+                    v-else
+                    @click="openInterviewModal(app)"
+                    class="flex items-center gap-1 text-micro font-bold text-brand-status-interview hover:opacity-80 transition-opacity uppercase"
+                  >
+                    <Calendar class="w-3.5 h-3.5" />
+                    Запись
+                  </button>
+                </template>
               </div>
             </div>
           </VueDraggable>

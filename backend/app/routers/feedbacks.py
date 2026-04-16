@@ -33,6 +33,15 @@ async def create_feedback(
     return feedback
 
 
+@router.get("/", response_model=list[FeedbackResponse])
+async def list_all_feedbacks(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role("hr", "manager")),
+):
+    result = await db.execute(select(Feedback).order_by(Feedback.created_at.desc()))
+    return result.scalars().all()
+
+
 @router.get("/interview/{interview_id}", response_model=list[FeedbackResponse])
 async def get_feedbacks(
     interview_id: int,

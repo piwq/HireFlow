@@ -22,6 +22,23 @@ async def list_applications(
     return result.scalars().all()
 
 
+@router.get("/my", response_model=list[ApplicationResponse])
+async def my_applications(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("candidate")),
+):
+    profile_result = await db.execute(
+        select(CandidateProfile).where(CandidateProfile.user_id == current_user.id)
+    )
+    profile = profile_result.scalar_one_or_none()
+    if not profile:
+        return []
+    result = await db.execute(
+        select(Application).where(Application.candidate_id == profile.id)
+    )
+    return result.scalars().all()
+
+
 @router.post("/", response_model=ApplicationResponse, status_code=201)
 async def create_application(
     body: ApplicationCreate,
