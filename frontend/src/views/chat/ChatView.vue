@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, nextTick, watch, computed } from 'vue'
 import api from '@/api/index.js'
 import { unreadCounts, loadUnreadCounts, clearForUser, incrementForUser } from '@/stores/unread.js'
+import { sendWS, setChatCallback, clearChatCallback, wsConnected } from '@/stores/ws.js'
 import {
   MessageSquare,
   Send,
@@ -22,8 +23,7 @@ const selectedUser = ref(null)
 const messages = ref([])
 const newMessage = ref('')
 const search = ref('')
-const ws = ref(null)
-const connected = ref(false)
+const connected = wsConnected
 const loadingMessages = ref(false)
 const messagesEnd = ref(null)
 
@@ -45,11 +45,11 @@ const filteredUsers = computed(() => {
 
 onMounted(async () => {
   await Promise.all([loadUsers(), loadUnreadCounts()])
-  connectWS()
+  setChatCallback(handleChatMessage)
 })
 
 onUnmounted(() => {
-  ws.value?.close()
+  clearChatCallback()
 })
 
 const currentRole = localStorage.getItem('role')
@@ -80,72 +80,35 @@ async function selectUser(user) {
   }
 }
 
-function connectWS() {
-  const token = localStorage.getItem('token')
-  if (!token) return
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const url = `${protocol}//${window.location.host}/api/ws?token=${token}`
+async function handleChatMessage(msg) {
+  const otherId = msg.sender_id === currentUserId ? msg.receiver_id : msg.sender_id
 
-  const socket = new WebSocket(url)
-
-  socket.onopen = () => {
-    connected.value = true
-    ws.value = socket
-  }
-
-  socket.onmessage = async (event) => {
-    const msg = JSON.parse(event.data)
-    const otherId = msg.sender_id === currentUserId ? msg.receiver_id : msg.sender_id
-
-    // If sender is not in our user list, refresh conversation list
-    if (!users.value.find(u => u.id === otherId)) {
-      await loadUsers()
-      // Auto-select the new conversation if nothing is selected
-      if (!selectedUser.value) {
-        const newUser = users.value.find(u => u.id === otherId)
-        if (newUser) await selectUser(newUser)
-      }
-    }
-
-    // Add message to current conversation if applicable
-    if (selectedUser.value && (selectedUser.value.id === otherId)) {
-      if (!messages.value.find(m => m.id === msg.id)) {
-        messages.value.push(msg)
-        scrollToBottom()
-      }
-      // Auto-mark as read since user is viewing this conversation
-      if (msg.sender_id !== currentUserId) {
-        api.post(`/messages/read/${otherId}`).catch(() => {})
-      }
-    } else if (msg.sender_id !== currentUserId) {
-      // Not viewing this conversation — increment unread
-      incrementForUser(otherId)
+  if (!users.value.find(u => u.id === otherId)) {
+    await loadUsers()
+    if (!selectedUser.value) {
+      const newUser = users.value.find(u => u.id === otherId)
+      if (newUser) await selectUser(newUser)
     }
   }
 
-  socket.onclose = () => {
-    connected.value = false
-    ws.value = null
-    // Reconnect after 3s
-    setTimeout(connectWS, 3000)
-  }
-
-  socket.onerror = () => {
-    socket.close()
+  if (selectedUser.value && selectedUser.value.id === otherId) {
+    if (!messages.value.find(m => m.id === msg.id)) {
+      messages.value.push(msg)
+      scrollToBottom()
+    }
+    if (msg.sender_id !== currentUserId) {
+      api.post(`/messages/read/${otherId}`).catch(() => {})
+    }
+  } else if (msg.sender_id !== currentUserId) {
+    incrementForUser(otherId)
   }
 }
 
 function sendMessage() {
   const text = newMessage.value.trim()
   if (!text || !selectedUser.value) return
-
-  if (ws.value?.readyState === WebSocket.OPEN) {
-    ws.value.send(JSON.stringify({
-      receiver_id: selectedUser.value.id,
-      text,
-    }))
-    newMessage.value = ''
-  }
+  const sent = sendWS({ receiver_id: selectedUser.value.id, text })
+  if (sent) newMessage.value = ''
 }
 
 function onKeydown(e) {

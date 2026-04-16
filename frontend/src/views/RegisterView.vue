@@ -19,6 +19,7 @@ const roles = [
   { value: 'candidate', label: 'Кандидат' },
   { value: 'hr', label: 'HR-специалист' },
   { value: 'manager', label: 'Руководитель' },
+  { value: 'admin', label: 'Администратор' },
 ]
 
 async function submit() {

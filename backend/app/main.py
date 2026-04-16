@@ -1,10 +1,25 @@
+import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import auth, candidates, applications, interviews, feedbacks, files, vacancies
-from app.routers import users, chat, livekit
+from app.routers import users, chat, livekit, documents, interview_requests
 
-app = FastAPI(title="HR Platform", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from app.services.telegram_bot import start_bot
+    task = asyncio.create_task(start_bot())
+    yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
+app = FastAPI(title="HR Platform", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,6 +39,8 @@ app.include_router(vacancies.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 app.include_router(livekit.router, prefix="/api")
+app.include_router(documents.router, prefix="/api")
+app.include_router(interview_requests.router, prefix="/api")
 
 
 @app.get("/api/health")

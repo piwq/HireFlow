@@ -10,11 +10,11 @@ const route = useRoute()
 // HR, Manager and Candidate get the sidebar layout
 const useLayout = computed(() => {
   const userRole = localStorage.getItem('role') || ''
-  if (!['hr', 'manager', 'candidate'].includes(userRole)) return false
+  if (!['hr', 'manager', 'candidate', 'admin'].includes(userRole)) return false
   const { role, roles, guest } = route.meta
   if (guest) return false
-  if (['hr', 'manager', 'candidate'].includes(role)) return true
-  if (roles?.some(r => ['hr', 'manager', 'candidate'].includes(r))) return true
+  if (['hr', 'manager', 'candidate', 'admin'].includes(role)) return true
+  if (roles?.some(r => ['hr', 'manager', 'candidate', 'admin'].includes(r))) return true
   return false
 })
 </script>

@@ -15,6 +15,11 @@ const routes = [
     meta: { role: 'candidate' },
   },
   {
+    path: '/candidate/resume-builder',
+    component: () => import('@/views/candidate/LiveResumeBuilderView.vue'),
+    meta: { role: 'candidate' },
+  },
+  {
     path: '/candidate/interviews',
     component: () => import('@/views/candidate/InterviewsView.vue'),
     meta: { role: 'candidate' },
@@ -25,8 +30,18 @@ const routes = [
     meta: { role: 'hr' },
   },
   {
+    path: '/hr/candidates/:id',
+    component: () => import('@/views/hr/CandidateCardView.vue'),
+    meta: { role: 'hr' },
+  },
+  {
     path: '/hr/vacancies',
     component: () => import('@/views/hr/VacanciesView.vue'),
+    meta: { role: 'hr' },
+  },
+  {
+    path: '/hr/interview-requests',
+    component: () => import('@/views/hr/InterviewRequestsView.vue'),
     meta: { role: 'hr' },
   },
   {
@@ -40,14 +55,24 @@ const routes = [
     meta: { role: 'manager' },
   },
   {
+    path: '/manager/candidates',
+    component: () => import('@/views/manager/ManagerCandidatesView.vue'),
+    meta: { role: 'manager' },
+  },
+  {
+    path: '/admin',
+    component: () => import('@/views/admin/AdminView.vue'),
+    meta: { role: 'admin' },
+  },
+  {
     path: '/chat',
     component: () => import('@/views/chat/ChatView.vue'),
-    meta: { roles: ['hr', 'manager', 'candidate'] },
+    meta: { roles: ['hr', 'manager', 'candidate', 'admin'] },
   },
   {
     path: '/call/:roomCode',
     component: () => import('@/views/VideoCallView.vue'),
-    meta: { roles: ['hr', 'manager', 'candidate'] },
+    meta: { roles: ['hr', 'manager', 'candidate', 'admin'] },
   },
 ]
 

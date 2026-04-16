@@ -9,6 +9,7 @@ class UserRole(str, enum.Enum):
     candidate = "candidate"
     hr = "hr"
     manager = "manager"
+    admin = "admin"
 
 
 class User(Base):
@@ -18,5 +19,6 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[UserRole] = mapped_column(SAEnum(UserRole), default=UserRole.candidate)
+    telegram_chat_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     profile: Mapped["CandidateProfile"] = relationship(back_populates="user", uselist=False)

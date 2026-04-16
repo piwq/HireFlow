@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     livekit_api_key: str = "devkey"
     livekit_api_secret: str = "secret"
 
+    gemini_api_key: str = ""
+    telegram_bot_token: str = ""
+    telegram_bot_username: str = ""
+
     class Config:
         env_file = ".env"
 

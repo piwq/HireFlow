@@ -22,22 +22,45 @@ import {
 
 const router = useRouter()
 
-const STATUSES = ['new', 'screening', 'interview', 'hired', 'rejected']
+const STATUSES = [
+  'new', 'screening', 'interview', 'manager_interview',
+  'interview_done', 'awaiting_decision', 'reserve', 'offer',
+  'hired', 'rejected', 'accepted',
+]
+
+const ARCHIVE_STATUSES = ['hired', 'rejected', 'accepted']
 
 const columns = [
-  { key: 'new',       label: 'Новые',    dot: 'bg-brand-status-new',       badge: 'bg-brand-status-new/10 text-brand-status-new',       top: 'border-t-brand-status-new' },
-  { key: 'screening', label: 'Скрининг', dot: 'bg-brand-status-screening', badge: 'bg-brand-status-screening/10 text-brand-status-screening', top: 'border-t-brand-status-screening' },
-  { key: 'interview', label: 'Интервью', dot: 'bg-brand-status-interview', badge: 'bg-brand-status-interview/10 text-brand-status-interview', top: 'border-t-brand-status-interview' },
-  { key: 'hired',     label: 'Нанят',    dot: 'bg-brand-status-hired',     badge: 'bg-brand-status-hired/10 text-brand-status-hired',     top: 'border-t-brand-status-hired' },
-  { key: 'rejected',  label: 'Отказ',    dot: 'bg-brand-status-rejected',  badge: 'bg-brand-status-rejected/10 text-brand-status-rejected',  top: 'border-t-brand-status-rejected' },
+  { key: 'new',               label: 'Новый',                dot: 'bg-blue-400',    badge: 'bg-blue-400/10 text-blue-400',    top: 'border-t-blue-400' },
+  { key: 'screening',         label: 'На рассмотрении',      dot: 'bg-yellow-400',  badge: 'bg-yellow-400/10 text-yellow-400', top: 'border-t-yellow-400' },
+  { key: 'interview',         label: 'HR-интервью',          dot: 'bg-purple-400',  badge: 'bg-purple-400/10 text-purple-400', top: 'border-t-purple-400' },
+  { key: 'manager_interview', label: 'Интервью с руковод.',  dot: 'bg-indigo-400',  badge: 'bg-indigo-400/10 text-indigo-400', top: 'border-t-indigo-400' },
+  { key: 'interview_done',    label: 'Интервью проведено',   dot: 'bg-cyan-400',    badge: 'bg-cyan-400/10 text-cyan-400',    top: 'border-t-cyan-400' },
+  { key: 'awaiting_decision', label: 'Ожидает решения',      dot: 'bg-orange-400',  badge: 'bg-orange-400/10 text-orange-400', top: 'border-t-orange-400' },
+  { key: 'reserve',           label: 'Резерв',               dot: 'bg-teal-400',    badge: 'bg-teal-400/10 text-teal-400',    top: 'border-t-teal-400' },
+  { key: 'offer',             label: 'Оффер',                dot: 'bg-emerald-400', badge: 'bg-emerald-400/10 text-emerald-400', top: 'border-t-emerald-400' },
+]
+
+const archiveColumns = [
+  { key: 'hired',    label: 'Нанят',  dot: 'bg-green-500', badge: 'bg-green-500/10 text-green-500',  top: 'border-t-green-500' },
+  { key: 'rejected', label: 'Отказ',  dot: 'bg-red-400',   badge: 'bg-red-400/10 text-red-400',      top: 'border-t-red-400' },
+  { key: 'accepted', label: 'Принят', dot: 'bg-green-600', badge: 'bg-green-600/10 text-green-600',  top: 'border-t-green-600' },
 ]
 
 const colApps = ref({
-  new: [], screening: [], interview: [], hired: [], rejected: [],
+  new: [], screening: [], interview: [], manager_interview: [],
+  interview_done: [], awaiting_decision: [], reserve: [], offer: [],
+  hired: [], rejected: [], accepted: [],
 })
 const candidates = ref([])
 const interviews = ref([])
+const vacancies = ref([])
 const search = ref('')
+const filterStatus = ref('') // '' = all, or specific status key
+const filterVacancy = ref('') // '' = all, or vacancy id (as string)
+const showFilterMenu = ref(false)
+const showEmptyColumns = ref(false)
+const showArchive = ref(false)
 const allApps = ref([])
 const loading = ref(true)
 const showModal = ref(false)
@@ -51,15 +74,17 @@ async function loadData() {
   console.log('[CandidatesView] Starting data load...')
   loading.value = true
   try {
-    const [appsRes, candidatesRes, interviewsRes] = await Promise.all([
+    const [appsRes, candidatesRes, interviewsRes, vacRes] = await Promise.all([
       api.get('/applications/'),
       api.get('/candidates/'),
       api.get('/interviews/'),
+      api.get('/vacancies/'),
     ])
     console.log('[CandidatesView] Data loaded:', appsRes.data.length, 'apps,', candidatesRes.data.length, 'candidates')
     candidates.value = candidatesRes.data
     allApps.value = appsRes.data
     interviews.value = interviewsRes.data
+    vacancies.value = vacRes.data
     updateColApps()
   } catch (err) {
     console.error('[CandidatesView] Load error:', err)
@@ -69,25 +94,39 @@ async function loadData() {
 }
 
 function updateColApps() {
-  console.log('[CandidatesView] Updating column filtered lists...')
   if (!allApps.value) return
   for (const status of STATUSES) {
     colApps.value[status] = allApps.value.filter((a) => {
       if (a.status !== status) return false
+      if (filterStatus.value && a.status !== filterStatus.value) return false
+      if (filterVacancy.value && String(a.vacancy_id) !== filterVacancy.value) return false
       if (!search.value) return true
       const cand = candidateForApp(a)
       const q = search.value.toLowerCase()
-      const matchText = cand?.full_name?.toLowerCase().includes(q) || cand?.email?.toLowerCase().includes(q)
-      return matchText
+      return cand?.full_name?.toLowerCase().includes(q) || cand?.email?.toLowerCase().includes(q)
     })
   }
 }
 
-import { watch, onUnmounted } from 'vue'
-watch(search, updateColApps)
+import { watch, computed, onUnmounted } from 'vue'
+watch([search, filterStatus, filterVacancy], updateColApps)
 
-// Close menu when clicking outside
-const closeMenuHandler = () => { activeMenu.value = null }
+const visibleColumns = computed(() =>
+  showEmptyColumns.value
+    ? columns
+    : columns.filter(col => colApps.value[col.key].length > 0)
+)
+
+const archiveTotal = computed(() =>
+  ARCHIVE_STATUSES.reduce((sum, s) => sum + (colApps.value[s]?.length || 0), 0)
+)
+
+const pipelineTotal = computed(() =>
+  columns.reduce((sum, col) => sum + (colApps.value[col.key]?.length || 0), 0)
+)
+
+// Close menus when clicking outside
+const closeMenuHandler = () => { activeMenu.value = null; showFilterMenu.value = false }
 onMounted(() => window.addEventListener('click', closeMenuHandler))
 onUnmounted(() => window.removeEventListener('click', closeMenuHandler))
 
@@ -102,6 +141,15 @@ function interviewForApp(app) {
 function initials(name) {
   if (!name) return '?'
   return name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()
+}
+
+function vacancyTitle(vacancyId) {
+  return vacancies.value.find(v => v.id === vacancyId)?.title || null
+}
+
+function formatDate(dt) {
+  if (!dt) return null
+  return new Date(dt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
 }
 
 async function onColAdd(status, event) {
@@ -173,31 +221,110 @@ async function updateAppStatus(app, newStatus) {
         <p class="text-sm md:text-body text-brand-light-secondary dark:text-brand-dark-secondary mt-1">Организуйте процесс подбора и меняйте этапы откликов</p>
       </div>
       
-      <div class="flex items-center gap-3 w-full md:w-auto">
+      <div class="flex items-center gap-3 w-full md:w-auto flex-wrap">
         <div class="relative flex-1 md:flex-none">
           <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-brand-light-muted dark:text-brand-dark-muted" />
           <input
             v-model="search"
             type="text"
             placeholder="Поиск..."
-            class="bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-brand-light-primary dark:text-brand-dark-primary focus:outline-none focus:border-brand-accent focus:ring-4 focus:ring-brand-accent/5 transition-all w-full md:w-72"
+            class="bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-brand-light-primary dark:text-brand-dark-primary focus:outline-none focus:border-brand-accent focus:ring-4 focus:ring-brand-accent/5 transition-all w-full md:w-64"
           />
         </div>
-        <button class="p-2.5 rounded-xl border border-brand-light-border dark:border-brand-dark-border bg-brand-light-surface dark:bg-brand-dark-surface text-brand-light-secondary dark:text-brand-dark-secondary hover:text-brand-light-primary dark:hover:text-brand-dark-primary transition-all">
-          <Filter class="w-5 h-5" />
+        <select
+          v-if="vacancies.length > 0"
+          v-model="filterVacancy"
+          class="bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border rounded-xl px-3 py-2.5 text-sm text-brand-light-primary dark:text-brand-dark-primary focus:outline-none focus:border-brand-accent transition-all appearance-none"
+          :class="filterVacancy ? 'border-brand-accent text-brand-accent' : ''"
+        >
+          <option value="">Все вакансии</option>
+          <option v-for="v in vacancies" :key="v.id" :value="String(v.id)">{{ v.title }}</option>
+        </select>
+        <button
+          @click="showEmptyColumns = !showEmptyColumns"
+          :class="[
+            'p-2.5 rounded-xl border bg-brand-light-surface dark:bg-brand-dark-surface transition-all text-xs font-bold whitespace-nowrap px-3',
+            showEmptyColumns
+              ? 'border-brand-accent text-brand-accent'
+              : 'border-brand-light-border dark:border-brand-dark-border text-brand-light-secondary dark:text-brand-dark-secondary hover:text-brand-light-primary dark:hover:text-brand-dark-primary'
+          ]"
+        >
+          {{ showEmptyColumns ? 'Скрыть пустые' : 'Все этапы' }}
         </button>
+        <div class="relative">
+          <button
+            @click.stop="showFilterMenu = !showFilterMenu"
+            :class="[
+              'p-2.5 rounded-xl border bg-brand-light-surface dark:bg-brand-dark-surface transition-all',
+              filterStatus
+                ? 'border-brand-accent text-brand-accent'
+                : 'border-brand-light-border dark:border-brand-dark-border text-brand-light-secondary dark:text-brand-dark-secondary hover:text-brand-light-primary dark:hover:text-brand-dark-primary'
+            ]"
+          >
+            <Filter class="w-5 h-5" />
+          </button>
+          <div
+            v-if="showFilterMenu"
+            class="absolute right-0 mt-2 w-52 bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border rounded-xl shadow-xl z-20 py-2"
+          >
+            <button
+              @click="filterStatus = ''; showFilterMenu = false"
+              :class="['w-full text-left px-4 py-2 text-sm transition-colors flex items-center gap-2', !filterStatus ? 'text-brand-accent font-bold' : 'text-brand-light-secondary dark:text-brand-dark-secondary hover:bg-brand-light-elevated dark:hover:bg-brand-dark-elevated']"
+            >
+              Все этапы
+            </button>
+            <div class="h-px bg-brand-light-border dark:bg-brand-dark-border my-1"></div>
+            <button
+              v-for="col in columns"
+              :key="col.key"
+              @click="filterStatus = col.key; showFilterMenu = false"
+              :class="['w-full text-left px-4 py-2 text-sm transition-colors flex items-center gap-2', filterStatus === col.key ? 'text-brand-accent font-bold' : 'text-brand-light-secondary dark:text-brand-dark-secondary hover:bg-brand-light-elevated dark:hover:bg-brand-dark-elevated']"
+            >
+              <span :class="['w-2 h-2 rounded-full shrink-0', col.dot]"></span>
+              {{ col.label }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pipeline summary bar -->
+    <div v-if="!loading && pipelineTotal > 0" class="px-4 md:px-8 pb-3 flex items-center gap-2 overflow-x-auto custom-scrollbar-h">
+      <div
+        v-for="col in columns.filter(c => colApps[c.key].length > 0)"
+        :key="col.key"
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border cursor-default shrink-0 transition-all hover:opacity-80"
+        :class="col.badge + ' border-current/20'"
+      >
+        <span :class="['w-1.5 h-1.5 rounded-full', col.dot]"></span>
+        <span class="text-xs font-bold">{{ col.label }}</span>
+        <span class="text-xs font-black opacity-70">{{ colApps[col.key].length }}</span>
+      </div>
+      <div v-if="archiveTotal > 0" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-brand-light-border dark:border-brand-dark-border text-brand-light-secondary dark:text-brand-dark-secondary shrink-0">
+        <span class="text-xs font-bold">Архив</span>
+        <span class="text-xs font-black opacity-70">{{ archiveTotal }}</span>
       </div>
     </div>
 
     <!-- Kanban board -->
-    <div class="flex-1 p-4 md:p-8 pt-4 overflow-x-auto custom-scrollbar-h">
+    <div class="flex-1 p-4 md:p-8 pt-0 overflow-x-auto custom-scrollbar-h">
       <div v-if="loading" class="flex items-center justify-center h-64">
         <Loader2 class="w-10 h-10 animate-spin text-brand-accent" />
       </div>
       
+      <div v-else-if="visibleColumns.length === 0" class="flex flex-col items-center justify-center h-64 gap-4 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-brand-light-elevated dark:bg-brand-dark-elevated flex items-center justify-center">
+          <Users class="w-8 h-8 text-brand-light-muted dark:text-brand-dark-muted" />
+        </div>
+        <div>
+          <p class="text-body font-semibold text-brand-light-primary dark:text-brand-dark-primary">Кандидатов нет</p>
+          <p class="text-caption text-brand-light-secondary dark:text-brand-dark-secondary mt-1">Пока нет ни одной заявки</p>
+        </div>
+      </div>
+
       <div v-else class="flex gap-6 h-full min-w-max pb-4">
         <div
-          v-for="col in columns"
+          v-for="col in visibleColumns"
           :key="col.key"
           class="w-[260px] flex flex-col h-full shrink-0"
         >
@@ -221,6 +348,7 @@ async function updateAppStatus(app, newStatus) {
             class="flex-1 overflow-y-auto min-h-[50vh] rounded-2xl border border-brand-light-border dark:border-brand-dark-border bg-brand-light-elevated/40 dark:bg-brand-dark-elevated/20 p-3 space-y-3 custom-scrollbar"
             :class="[col.top, 'border-t-[3px]']"
           >
+
             <div
               v-for="app in colApps[col.key]"
               :key="app.id"
@@ -235,13 +363,24 @@ async function updateAppStatus(app, newStatus) {
                     </span>
                   </div>
                   <div class="min-w-0">
-                    <h4 class="font-bold text-brand-light-primary dark:text-brand-dark-primary text-sm leading-tight truncate">
+                    <h4
+                      @click.stop="router.push(`/hr/candidates/${app.candidate_id}`)"
+                      class="font-bold text-brand-light-primary dark:text-brand-dark-primary text-sm leading-tight truncate cursor-pointer hover:text-brand-accent transition-colors"
+                    >
                       {{ candidateForApp(app)?.full_name || 'Кандидат #' + app.candidate_id }}
                     </h4>
                     <p class="text-caption text-brand-light-secondary dark:text-brand-dark-secondary mt-0.5 truncate flex items-center gap-1">
                       <Mail class="w-3 h-3" />
                       {{ candidateForApp(app)?.email }}
                     </p>
+                    <div class="flex items-center gap-2 mt-1 flex-wrap">
+                      <span v-if="vacancyTitle(app.vacancy_id)" class="text-micro bg-brand-accent/10 text-brand-accent px-1.5 py-0.5 rounded font-medium truncate max-w-[140px]">
+                        {{ vacancyTitle(app.vacancy_id) }}
+                      </span>
+                      <span v-if="app.created_at" class="text-micro text-brand-light-muted dark:text-brand-dark-muted">
+                        {{ formatDate(app.created_at) }}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div class="relative">
@@ -253,17 +392,73 @@ async function updateAppStatus(app, newStatus) {
                   </button>
                   
                   <!-- Dropdown Menu -->
-                  <div 
+                  <div
                     v-if="activeMenu === app.id"
-                    class="absolute right-0 mt-2 w-48 bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border rounded-xl shadow-xl z-10 py-2 antialiased"
+                    class="absolute right-0 mt-2 w-56 bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border rounded-xl shadow-xl z-10 py-2 antialiased"
                   >
-                    <button 
+                    <button
+                      @click="router.push(`/hr/candidates/${app.candidate_id}`); activeMenu = null"
+                      class="w-full text-left px-4 py-2 text-sm text-brand-light-primary dark:text-brand-dark-primary hover:bg-brand-light-elevated dark:hover:bg-brand-dark-elevated flex items-center gap-2"
+                    >
+                      <ExternalLink class="w-4 h-4" /> Открыть карточку
+                    </button>
+                    <button
+                      v-if="!interviewForApp(app)"
                       @click="openInterviewModal(app)"
                       class="w-full text-left px-4 py-2 text-sm text-brand-light-primary dark:text-brand-dark-primary hover:bg-brand-light-elevated dark:hover:bg-brand-dark-elevated flex items-center gap-2"
                     >
                       <Calendar class="w-4 h-4" /> Назначить интервью
                     </button>
-                    <button 
+                    <div
+                      v-else
+                      class="px-4 py-2 text-sm text-brand-light-muted dark:text-brand-dark-muted flex items-center gap-2"
+                    >
+                      <Calendar class="w-4 h-4" /> Интервью назначено
+                    </div>
+                    <div class="h-px bg-brand-light-border dark:bg-brand-dark-border my-1"></div>
+                    <button
+                      v-if="app.status !== 'screening'"
+                      @click="updateAppStatus(app, 'screening')"
+                      class="w-full text-left px-4 py-2 text-sm text-brand-light-primary dark:text-brand-dark-primary hover:bg-brand-light-elevated dark:hover:bg-brand-dark-elevated flex items-center gap-2"
+                    >
+                      → На рассмотрении
+                    </button>
+                    <button
+                      v-if="app.status !== 'interview'"
+                      @click="updateAppStatus(app, 'interview')"
+                      class="w-full text-left px-4 py-2 text-sm text-brand-light-primary dark:text-brand-dark-primary hover:bg-brand-light-elevated dark:hover:bg-brand-dark-elevated flex items-center gap-2"
+                    >
+                      → HR-интервью
+                    </button>
+                    <button
+                      v-if="app.status !== 'manager_interview'"
+                      @click="updateAppStatus(app, 'manager_interview')"
+                      class="w-full text-left px-4 py-2 text-sm text-brand-light-primary dark:text-brand-dark-primary hover:bg-brand-light-elevated dark:hover:bg-brand-dark-elevated flex items-center gap-2"
+                    >
+                      → Интервью с рук-лем
+                    </button>
+                    <button
+                      v-if="app.status !== 'offer'"
+                      @click="updateAppStatus(app, 'offer')"
+                      class="w-full text-left px-4 py-2 text-sm text-emerald-500 hover:bg-emerald-500/5 flex items-center gap-2"
+                    >
+                      → Оффер
+                    </button>
+                    <button
+                      v-if="app.status !== 'accepted'"
+                      @click="updateAppStatus(app, 'accepted')"
+                      class="w-full text-left px-4 py-2 text-sm text-green-500 hover:bg-green-500/5 flex items-center gap-2"
+                    >
+                      → Принят
+                    </button>
+                    <button
+                      v-if="app.status !== 'reserve'"
+                      @click="updateAppStatus(app, 'reserve')"
+                      class="w-full text-left px-4 py-2 text-sm text-teal-500 hover:bg-teal-500/5 flex items-center gap-2"
+                    >
+                      → Резерв
+                    </button>
+                    <button
                       v-if="app.status !== 'rejected'"
                       @click="updateAppStatus(app, 'rejected')"
                       class="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/5 flex items-center gap-2"
@@ -271,7 +466,7 @@ async function updateAppStatus(app, newStatus) {
                       <X class="w-4 h-4" /> Отклонить
                     </button>
                     <div class="h-px bg-brand-light-border dark:bg-brand-dark-border my-1"></div>
-                    <a 
+                    <a
                       :href="`mailto:${candidateForApp(app)?.email}`"
                       class="w-full text-left px-4 py-2 text-sm text-brand-light-secondary dark:text-brand-dark-secondary hover:bg-brand-light-elevated dark:hover:bg-brand-dark-elevated flex items-center gap-2"
                     >
@@ -324,6 +519,62 @@ async function updateAppStatus(app, newStatus) {
             </div>
           </VueDraggable>
         </div>
+
+        <!-- Archive panel -->
+        <div class="flex flex-col h-full shrink-0 w-[260px]">
+          <button
+            @click="showArchive = !showArchive"
+            class="flex items-center justify-between mb-4 px-2 w-full"
+          >
+            <div class="flex items-center gap-2.5">
+              <div class="w-2 h-2 rounded-full bg-brand-light-muted dark:bg-brand-dark-muted"></div>
+              <span class="font-bold text-brand-light-secondary dark:text-brand-dark-secondary text-sm uppercase tracking-wider">Архив</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span v-if="archiveTotal > 0" class="text-micro rounded-lg px-2 py-0.5 font-bold bg-brand-light-elevated dark:bg-brand-dark-elevated text-brand-light-secondary dark:text-brand-dark-secondary">
+                {{ archiveTotal }}
+              </span>
+              <span class="text-brand-light-muted dark:text-brand-dark-muted text-xs">{{ showArchive ? '▲' : '▼' }}</span>
+            </div>
+          </button>
+
+          <div v-if="showArchive" class="flex-1 space-y-4 overflow-y-auto custom-scrollbar">
+            <div v-for="col in archiveColumns" :key="col.key">
+              <div class="flex items-center gap-2 mb-2 px-1">
+                <span :class="['w-1.5 h-1.5 rounded-full', col.dot]"></span>
+                <span class="text-xs font-bold text-brand-light-secondary dark:text-brand-dark-secondary uppercase tracking-wider">{{ col.label }}</span>
+                <span :class="['text-micro rounded px-1.5 py-0.5 font-bold ml-auto', col.badge]">{{ colApps[col.key].length }}</span>
+              </div>
+              <VueDraggable
+                v-model="colApps[col.key]"
+                :group="{ name: 'kanban' }"
+                :animation="250"
+                @add="(e) => onColAdd(col.key, e)"
+                class="min-h-[60px] rounded-xl border border-brand-light-border dark:border-brand-dark-border bg-brand-light-elevated/40 dark:bg-brand-dark-elevated/20 p-2 space-y-2"
+                :class="[col.top, 'border-t-2']"
+              >
+                <div
+                  v-for="app in colApps[col.key]"
+                  :key="app.id"
+                  class="bg-brand-light-surface dark:bg-brand-dark-surface rounded-xl border border-brand-light-border dark:border-brand-dark-border px-3 py-2 cursor-grab active:cursor-grabbing"
+                >
+                  <p class="text-xs font-bold text-brand-light-primary dark:text-brand-dark-primary truncate">
+                    {{ candidateForApp(app)?.full_name || 'Кандидат #' + app.candidate_id }}
+                  </p>
+                  <p class="text-micro text-brand-light-muted dark:text-brand-dark-muted truncate mt-0.5">
+                    {{ candidateForApp(app)?.email }}
+                  </p>
+                </div>
+              </VueDraggable>
+            </div>
+          </div>
+
+          <div v-else class="flex-1 rounded-2xl border border-dashed border-brand-light-border dark:border-brand-dark-border flex items-center justify-center">
+            <p class="text-xs text-brand-light-muted dark:text-brand-dark-muted text-center px-4">
+              {{ archiveTotal }} завершённых
+            </p>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -348,7 +599,14 @@ async function updateAppStatus(app, newStatus) {
   background: #2a2f4a;
   border-radius: 10px;
 }
-.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+.custom-scrollbar-h::-webkit-scrollbar {
+  height: 4px;
+}
+.custom-scrollbar-h::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar-h::-webkit-scrollbar-thumb {
   background: #2a2f4a;
+  border-radius: 10px;
 }
 </style>

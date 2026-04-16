@@ -7,6 +7,8 @@ import {
   Calendar,
   Clock,
   Loader2,
+  MapPin,
+  MessageSquare,
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -43,6 +45,8 @@ function formatDate(dt) {
 function isUpcoming(dt) {
   return new Date(dt) > new Date()
 }
+
+const FORMAT_LABELS = { online: 'Онлайн', offline: 'Офлайн', phone: 'Телефон' }
 </script>
 
 <template>
@@ -108,6 +112,17 @@ function isUpcoming(dt) {
                   <p class="text-caption text-brand-light-secondary dark:text-brand-dark-secondary mt-1 flex items-center gap-1">
                     <Clock class="w-3 h-3" />
                     {{ formatDate(interview.scheduled_at) }}
+                    <span v-if="interview.format" class="ml-2 px-1.5 py-0.5 rounded bg-brand-light-elevated dark:bg-brand-dark-elevated text-brand-light-muted dark:text-brand-dark-muted text-micro">
+                      {{ FORMAT_LABELS[interview.format] || interview.format }}
+                    </span>
+                  </p>
+                  <p v-if="interview.location" class="text-caption text-brand-light-secondary dark:text-brand-dark-secondary mt-0.5 flex items-center gap-1">
+                    <MapPin class="w-3 h-3 shrink-0" />
+                    {{ interview.location }}
+                  </p>
+                  <p v-if="interview.comment" class="text-caption text-brand-light-muted dark:text-brand-dark-muted mt-0.5 flex items-start gap-1">
+                    <MessageSquare class="w-3 h-3 shrink-0 mt-0.5" />
+                    {{ interview.comment }}
                   </p>
                 </div>
               </div>

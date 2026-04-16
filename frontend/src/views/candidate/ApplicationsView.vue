@@ -14,24 +14,42 @@ const loading = ref(true)
 
 const STATUS_LABELS = {
   new: 'Новый',
-  screening: 'Скрининг',
-  interview: 'Интервью',
-  hired: 'Нанят',
+  screening: 'На рассмотрении',
+  interview: 'Назначено HR-интервью',
+  manager_interview: 'Интервью с руководителем',
+  interview_done: 'Интервью проведено',
+  awaiting_decision: 'Ожидает решения',
+  reserve: 'Резерв',
+  offer: 'Оффер',
+  hired: 'Принят',
   rejected: 'Отказ',
+  accepted: 'Принят',
 }
 const STATUS_COLORS = {
-  new: 'bg-brand-status-new/10 text-brand-status-new',
-  screening: 'bg-brand-status-screening/10 text-brand-status-screening',
-  interview: 'bg-brand-status-interview/10 text-brand-status-interview',
-  hired: 'bg-brand-status-hired/10 text-brand-status-hired',
-  rejected: 'bg-brand-status-rejected/10 text-brand-status-rejected',
+  new: 'bg-blue-400/10 text-blue-400',
+  screening: 'bg-yellow-400/10 text-yellow-500',
+  interview: 'bg-purple-400/10 text-purple-400',
+  manager_interview: 'bg-indigo-400/10 text-indigo-400',
+  interview_done: 'bg-cyan-400/10 text-cyan-500',
+  awaiting_decision: 'bg-orange-400/10 text-orange-400',
+  reserve: 'bg-teal-400/10 text-teal-500',
+  offer: 'bg-emerald-400/10 text-emerald-500',
+  hired: 'bg-green-500/10 text-green-500',
+  rejected: 'bg-red-400/10 text-red-400',
+  accepted: 'bg-green-600/10 text-green-600',
 }
 const STATUS_DOTS = {
-  new: 'bg-brand-status-new',
-  screening: 'bg-brand-status-screening',
-  interview: 'bg-brand-status-interview',
-  hired: 'bg-brand-status-hired',
-  rejected: 'bg-brand-status-rejected',
+  new: 'bg-blue-400',
+  screening: 'bg-yellow-400',
+  interview: 'bg-purple-400',
+  manager_interview: 'bg-indigo-400',
+  interview_done: 'bg-cyan-400',
+  awaiting_decision: 'bg-orange-400',
+  reserve: 'bg-teal-400',
+  offer: 'bg-emerald-400',
+  hired: 'bg-green-500',
+  rejected: 'bg-red-400',
+  accepted: 'bg-green-600',
 }
 
 onMounted(async () => {
@@ -46,8 +64,12 @@ onMounted(async () => {
   loading.value = false
 })
 
+function vacancyFor(vacancyId) {
+  return vacancies.value.find(v => v.id === vacancyId)
+}
+
 function vacancyTitle(vacancyId) {
-  return vacancies.value.find(v => v.id === vacancyId)?.title || `Вакансия #${vacancyId}`
+  return vacancyFor(vacancyId)?.title || `Вакансия #${vacancyId}`
 }
 
 function formatDate(dt) {
@@ -99,6 +121,9 @@ function formatDate(dt) {
                   <p class="text-caption text-brand-light-secondary dark:text-brand-dark-secondary mt-0.5">
                     Заявка #{{ app.id }}
                     <span v-if="app.created_at"> · {{ formatDate(app.created_at) }}</span>
+                  </p>
+                  <p v-if="vacancyFor(app.vacancy_id)?.description" class="text-caption text-brand-light-muted dark:text-brand-dark-muted mt-1 line-clamp-2">
+                    {{ vacancyFor(app.vacancy_id).description }}
                   </p>
                 </div>
                 <span :class="['text-micro rounded-lg px-2.5 py-1 font-bold shrink-0 whitespace-nowrap', STATUS_COLORS[app.status]]">

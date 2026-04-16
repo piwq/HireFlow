@@ -17,7 +17,7 @@ api.interceptors.response.use(
   (err) => {
     // Only force logout on 401 from auth endpoints (expired/invalid token)
     // Don't redirect on 401 from regular endpoints — components handle their own errors
-    if (err.response?.status === 401 && err.config?.url?.includes('/auth/')) {
+    if (err.response?.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('role')
       window.location.href = '/login'

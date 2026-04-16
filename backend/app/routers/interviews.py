@@ -10,6 +10,7 @@ from app.models.interview import Interview
 from app.models.candidate import CandidateProfile
 from app.models.application import Application
 from app.schemas.interview import InterviewCreate, InterviewResponse
+from app.services.notifications import notify_user
 
 router = APIRouter(prefix="/interviews", tags=["interviews"])
 
@@ -18,17 +19,44 @@ router = APIRouter(prefix="/interviews", tags=["interviews"])
 async def create_interview(
     body: InterviewCreate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role("hr", "manager")),
+    _: User = Depends(require_role("hr", "manager", "admin")),
 ):
     room_code = uuid4().hex[:12]
     interview = Interview(
         application_id=body.application_id,
         scheduled_at=body.scheduled_at,
         room_code=room_code,
+        format=body.format,
+        location=body.location,
+        comment=body.comment,
+        manager_id=body.manager_id,
     )
     db.add(interview)
     await db.commit()
     await db.refresh(interview)
+
+    # Notify candidate
+    app_res = await db.execute(select(Application).where(Application.id == body.application_id))
+    app = app_res.scalar_one_or_none()
+    if app:
+        profile_res = await db.execute(
+            select(CandidateProfile).where(CandidateProfile.id == app.candidate_id)
+        )
+        profile = profile_res.scalar_one_or_none()
+        if profile:
+            await notify_user(profile.user_id, "interview_scheduled", {
+                "interview_id": interview.id,
+                "scheduled_at": interview.scheduled_at.isoformat(),
+                "format": interview.format,
+            })
+
+    # Notify assigned manager
+    if interview.manager_id:
+        await notify_user(interview.manager_id, "interview_assigned", {
+            "interview_id": interview.id,
+            "scheduled_at": interview.scheduled_at.isoformat(),
+        })
+
     return interview
 
 
@@ -58,7 +86,7 @@ async def my_interviews(
 @router.get("/", response_model=list[InterviewResponse])
 async def list_interviews(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role("hr", "manager")),
+    _: User = Depends(require_role("hr", "manager", "admin")),
 ):
     result = await db.execute(select(Interview))
     return result.scalars().all()

@@ -12,10 +12,19 @@ from app.schemas.message import UserListItem
 router = APIRouter(prefix="/users", tags=["users"])
 
 
+@router.get("/telegram-bot-info")
+async def telegram_bot_info(current_user: User = Depends(get_current_user)):
+    from app.config import settings
+    return {
+        "bot_username": settings.telegram_bot_username,
+        "telegram_linked": bool(current_user.telegram_chat_id),
+    }
+
+
 @router.get("/", response_model=list[UserListItem])
 async def list_users(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("hr", "manager")),
+    current_user: User = Depends(require_role("hr", "manager", "admin")),
 ):
     result = await db.execute(
         select(User, CandidateProfile)

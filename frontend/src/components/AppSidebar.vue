@@ -1,9 +1,10 @@
 <script setup>
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.js'
 import { useThemeStore } from '@/stores/theme.js'
 import { unreadCounts, loadUnreadCounts, getTotalUnread } from '@/stores/unread.js'
+import { useNotificationsStore } from '@/stores/notifications.js'
 import {
   Users,
   User,
@@ -18,6 +19,8 @@ import {
   ChevronRight,
   X,
   MessageSquare,
+  Wand2,
+  Bell,
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -29,22 +32,31 @@ const auth = useAuthStore()
 const theme = useThemeStore()
 const router = useRouter()
 const route = useRoute()
+const notificationsStore = useNotificationsStore()
+const showNotifications = ref(false)
 
 const navItems = computed(() => {
   if (auth.role === 'hr') return [
     { label: 'Кандидаты', icon: Users, to: '/hr' },
     { label: 'Вакансии', icon: Briefcase, to: '/hr/vacancies' },
+    { label: 'Запросы интервью', icon: ClipboardList, to: '/hr/interview-requests' },
     { label: 'Чат', icon: MessageSquare, to: '/chat' },
   ]
   if (auth.role === 'manager') return [
+    { label: 'Кандидаты', icon: Users, to: '/manager/candidates' },
     { label: 'Интервью', icon: Calendar, to: '/manager' },
     { label: 'Отзывы', icon: FileText, to: '/manager/reviews' },
     { label: 'Чат', icon: MessageSquare, to: '/chat' },
   ]
   if (auth.role === 'candidate') return [
     { label: 'Профиль', icon: User, to: '/candidate' },
+    { label: 'ИИ Конструктор', icon: Wand2, to: '/candidate/resume-builder' },
     { label: 'Мои заявки', icon: ClipboardList, to: '/candidate/applications' },
     { label: 'Собеседования', icon: Video, to: '/candidate/interviews' },
+    { label: 'Чат', icon: MessageSquare, to: '/chat' },
+  ]
+  if (auth.role === 'admin') return [
+    { label: 'Панель администратора', icon: Users, to: '/admin' },
     { label: 'Чат', icon: MessageSquare, to: '/chat' },
   ]
   return []
@@ -97,7 +109,7 @@ onUnmounted(() => {
         <div>
           <h1 class="font-bold text-brand-light-primary dark:text-brand-dark-primary text-xl leading-none tracking-tight">HireFlow</h1>
           <p class="text-micro text-brand-light-secondary dark:text-brand-dark-secondary mt-1 uppercase tracking-wider">
-            {{ auth.role === 'hr' ? 'HR Portal' : auth.role === 'candidate' ? 'Candidate Portal' : 'Management' }}
+            {{ auth.role === 'hr' ? 'HR Portal' : auth.role === 'candidate' ? 'Candidate Portal' : auth.role === 'admin' ? 'Admin Panel' : 'Management' }}
           </p>
         </div>
       </div>
@@ -130,8 +142,52 @@ onUnmounted(() => {
       </RouterLink>
     </nav>
 
+    <!-- Notifications panel -->
+    <div v-if="showNotifications" class="mx-3 mb-2 bg-brand-light-elevated dark:bg-brand-dark-elevated rounded-xl border border-brand-light-border dark:border-brand-dark-border overflow-hidden">
+      <div class="flex items-center justify-between px-3 py-2 border-b border-brand-light-border dark:border-brand-dark-border">
+        <span class="text-xs font-bold text-brand-light-primary dark:text-brand-dark-primary uppercase tracking-wider">Уведомления</span>
+        <button
+          v-if="notificationsStore.unreadCount > 0"
+          @click="notificationsStore.markAllRead()"
+          class="text-xs text-brand-accent hover:underline"
+        >Прочитать все</button>
+      </div>
+      <div class="max-h-64 overflow-y-auto">
+        <div v-if="notificationsStore.items.length === 0" class="px-3 py-4 text-xs text-brand-light-muted dark:text-brand-dark-muted text-center">
+          Нет уведомлений
+        </div>
+        <div
+          v-for="n in notificationsStore.items.slice(0, 15)"
+          :key="n.id"
+          :class="['flex items-start gap-2 px-3 py-2.5 border-b border-brand-light-border dark:border-brand-dark-border last:border-0 transition-colors', n.read ? 'opacity-60' : 'bg-brand-accent/5']"
+        >
+          <span class="text-base shrink-0 mt-0.5">{{ n.icon }}</span>
+          <div class="min-w-0 flex-1">
+            <p class="text-xs text-brand-light-primary dark:text-brand-dark-primary leading-snug">{{ n.text }}</p>
+            <p class="text-[10px] text-brand-light-muted dark:text-brand-dark-muted mt-0.5">
+              {{ n.at.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) }}
+            </p>
+          </div>
+          <div v-if="!n.read" class="w-1.5 h-1.5 rounded-full bg-brand-accent shrink-0 mt-1.5"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Bottom -->
     <div class="p-4 border-t border-brand-light-border dark:border-brand-dark-border space-y-1">
+      <button
+        @click="showNotifications = !showNotifications; if (showNotifications) notificationsStore.markAllRead()"
+        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium text-brand-light-secondary dark:text-brand-dark-secondary hover:bg-brand-light-elevated dark:hover:bg-brand-dark-elevated hover:text-brand-light-primary dark:hover:text-brand-dark-primary transition-colors group"
+      >
+        <div class="relative">
+          <Bell class="w-4.5 h-4.5 text-brand-light-muted dark:text-brand-dark-muted group-hover:text-brand-light-primary dark:group-hover:text-brand-dark-primary" />
+          <span
+            v-if="notificationsStore.unreadCount > 0"
+            class="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-0.5"
+          >{{ notificationsStore.unreadCount > 9 ? '9+' : notificationsStore.unreadCount }}</span>
+        </div>
+        <span class="flex-1 text-left">Уведомления</span>
+      </button>
       <button
         @click="theme.toggle()"
         class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium text-brand-light-secondary dark:text-brand-dark-secondary hover:bg-brand-light-elevated dark:hover:bg-brand-dark-elevated hover:text-brand-light-primary dark:hover:text-brand-dark-primary transition-colors group"

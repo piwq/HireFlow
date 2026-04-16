@@ -1,5 +1,6 @@
-from sqlalchemy import ForeignKey, Enum as SAEnum
+from sqlalchemy import ForeignKey, Enum as SAEnum, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from datetime import datetime
 import enum
 
 from app.database import Base
@@ -9,8 +10,14 @@ class ApplicationStatus(str, enum.Enum):
     new = "new"
     screening = "screening"
     interview = "interview"
+    manager_interview = "manager_interview"
+    interview_done = "interview_done"
+    awaiting_decision = "awaiting_decision"
+    reserve = "reserve"
+    offer = "offer"
     hired = "hired"
     rejected = "rejected"
+    accepted = "accepted"
 
 
 class Application(Base):
@@ -22,6 +29,7 @@ class Application(Base):
     status: Mapped[ApplicationStatus] = mapped_column(
         SAEnum(ApplicationStatus), default=ApplicationStatus.new
     )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     candidate: Mapped["CandidateProfile"] = relationship(back_populates="applications")
     vacancy: Mapped["Vacancy"] = relationship(back_populates="applications")

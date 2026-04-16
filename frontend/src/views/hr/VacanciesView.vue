@@ -12,6 +12,7 @@ import {
 } from 'lucide-vue-next'
 
 const vacancies = ref([])
+const appCountMap = ref({}) // vacancy_id → count
 const loading = ref(true)
 const showForm = ref(false)
 const form = ref({ title: '', description: '' })
@@ -23,8 +24,16 @@ onMounted(loadVacancies)
 async function loadVacancies() {
   loading.value = true
   try {
-    const { data } = await api.get('/vacancies/')
-    vacancies.value = data
+    const [vacRes, appsRes] = await Promise.all([
+      api.get('/vacancies/'),
+      api.get('/applications/'),
+    ])
+    vacancies.value = vacRes.data
+    const counts = {}
+    for (const app of appsRes.data) {
+      counts[app.vacancy_id] = (counts[app.vacancy_id] || 0) + 1
+    }
+    appCountMap.value = counts
   } finally {
     loading.value = false
   }
@@ -168,7 +177,7 @@ async function deleteVacancy(id) {
 
           <div class="mt-5 pt-4 border-t border-brand-light-border dark:border-brand-dark-border flex items-center gap-2 text-caption text-brand-light-secondary dark:text-brand-dark-secondary">
             <Users class="w-3.5 h-3.5" />
-            <span>Вакансия #{{ vacancy.id }}</span>
+            <span>{{ appCountMap[vacancy.id] || 0 }} {{ appCountMap[vacancy.id] === 1 ? 'отклик' : (appCountMap[vacancy.id] >= 2 && appCountMap[vacancy.id] <= 4) ? 'отклика' : 'откликов' }}</span>
           </div>
         </div>
       </div>
