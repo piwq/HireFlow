@@ -41,12 +41,22 @@ onMounted(async () => {
 
     room = new Room({ adaptiveStream: true, dynacast: true })
 
+    // Show participant as soon as they connect (even without video)
+    room.on(RoomEvent.ParticipantConnected, (participant) => {
+      if (!participants.value.find(p => p.identity === participant.identity)) {
+        participants.value.push({
+          identity: participant.identity,
+          name: participant.name || participant.identity,
+          videoTrack: null,
+        })
+      }
+    })
+
     room.on(RoomEvent.TrackSubscribed, (track, _pub, participant) => {
       if (track.kind !== Track.Kind.Video) return
       const existing = participants.value.find(p => p.identity === participant.identity)
       if (existing) {
         existing.videoTrack = track
-        // DOM element already exists
         const el = videoEls[participant.identity]
         if (el) track.attach(el)
       } else {
@@ -55,7 +65,6 @@ onMounted(async () => {
           name: participant.name || participant.identity,
           videoTrack: track,
         })
-        // setVideoEl will attach once Vue renders the <video> element
       }
     })
 
@@ -71,28 +80,37 @@ onMounted(async () => {
     })
 
     await room.connect(livekitUrl, data.token)
-    await room.localParticipant.enableCameraAndMicrophone()
 
-    // Attach local video
+    // Camera/mic: non-fatal — if it fails, stay in room with cam/mic off
+    try {
+      await room.localParticipant.enableCameraAndMicrophone()
+    } catch (mediaErr) {
+      console.warn('[LiveKit] Camera/mic unavailable:', mediaErr.message)
+      camEnabled.value = false
+      micEnabled.value = false
+    }
+
+    // Handle participants who joined before us
+    for (const participant of room.remoteParticipants.values()) {
+      if (participants.value.find(p => p.identity === participant.identity)) continue
+      let videoTrack = null
+      for (const pub of participant.videoTrackPublications.values()) {
+        if (pub.isSubscribed && pub.track) { videoTrack = pub.track; break }
+      }
+      participants.value.push({
+        identity: participant.identity,
+        name: participant.name || participant.identity,
+        videoTrack,
+      })
+    }
+
+    loading.value = false
+
+    // Attach local video AFTER loading=false so <video> element is in the DOM
     nextTick(() => {
       const localTrack = room.localParticipant.getTrackPublication(Track.Source.Camera)?.track
       if (localTrack && localVideoEl.value) localTrack.attach(localVideoEl.value)
     })
-
-    // Handle participants who joined before us
-    for (const participant of room.remoteParticipants.values()) {
-      for (const pub of participant.videoTrackPublications.values()) {
-        if (pub.isSubscribed && pub.track) {
-          participants.value.push({
-            identity: participant.identity,
-            name: participant.name || participant.identity,
-            videoTrack: pub.track,
-          })
-        }
-      }
-    }
-
-    loading.value = false
   } catch (e) {
     console.error('[LiveKit]', e)
     error.value = e.message || 'Ошибка подключения к комнате'
