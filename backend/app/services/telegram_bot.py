@@ -1,14 +1,42 @@
 """
 Telegram bot service.
-Handles /start <user_id> to link a user's Telegram account.
+Handles /start <token> to link a user's Telegram account via a one-time token.
 Started as a background task in main.py lifespan.
 """
 import asyncio
 import logging
+import secrets
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
 _ptb_app = None
+
+# {token: (user_id, expires_at)}
+_link_tokens: dict[str, tuple[int, datetime]] = {}
+_TOKEN_TTL = timedelta(minutes=10)
+
+
+def generate_link_token(user_id: int) -> str:
+    """Generate a one-time token for linking Telegram account."""
+    # Invalidate old tokens for this user
+    for token, (uid, _) in list(_link_tokens.items()):
+        if uid == user_id:
+            del _link_tokens[token]
+    token = secrets.token_urlsafe(16)
+    _link_tokens[token] = (user_id, datetime.utcnow() + _TOKEN_TTL)
+    return token
+
+
+def _pop_token(token: str) -> int | None:
+    """Consume token and return user_id, or None if invalid/expired."""
+    entry = _link_tokens.pop(token, None)
+    if not entry:
+        return None
+    user_id, expires_at = entry
+    if datetime.utcnow() > expires_at:
+        return None
+    return user_id
 
 
 async def start_bot() -> None:
@@ -37,10 +65,9 @@ async def start_bot() -> None:
             )
             return
 
-        try:
-            user_id = int(args[0])
-        except ValueError:
-            await update.message.reply_text("❌ Неверный формат ссылки.")
+        user_id = _pop_token(args[0])
+        if not user_id:
+            await update.message.reply_text("❌ Ссылка недействительна или устарела. Запросите новую в приложении.")
             return
 
         async with AsyncSessionLocal() as db:

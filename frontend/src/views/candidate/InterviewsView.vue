@@ -9,6 +9,8 @@ import {
   Loader2,
   MapPin,
   MessageSquare,
+  CheckCircle,
+  XCircle,
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -47,6 +49,17 @@ function isUpcoming(dt) {
 }
 
 const FORMAT_LABELS = { online: 'Онлайн', offline: 'Офлайн', phone: 'Телефон' }
+const INVITATION_LABELS = { pending: 'Ожидает подтверждения', confirmed: 'Подтверждено', declined: 'Отклонено' }
+const INVITATION_COLORS = { pending: 'bg-yellow-400/10 text-yellow-400', confirmed: 'bg-green-500/10 text-green-500', declined: 'bg-red-400/10 text-red-400' }
+
+async function updateInvitation(interview, status) {
+  try {
+    const res = await api.put(`/interviews/${interview.id}/invitation`, { status })
+    interview.invitation_status = res.data.invitation_status
+  } catch (e) {
+    alert(e.response?.data?.detail || 'Ошибка')
+  }
+}
 </script>
 
 <template>
@@ -135,6 +148,22 @@ const FORMAT_LABELS = { online: 'Онлайн', offline: 'Офлайн', phone: 
                 <Video class="w-4 h-4" />
                 Войти
               </button>
+
+              <div class="flex flex-col items-end gap-2 shrink-0">
+                <!-- Invitation status -->
+                <span v-if="interview.invitation_status" :class="['text-micro font-bold px-2.5 py-1 rounded-lg', INVITATION_COLORS[interview.invitation_status] || 'bg-gray-400/10 text-gray-400']">
+                  {{ INVITATION_LABELS[interview.invitation_status] || interview.invitation_status }}
+                </span>
+                <!-- Confirm/Decline buttons -->
+                <div v-if="isUpcoming(interview.scheduled_at) && (!interview.invitation_status || interview.invitation_status === 'pending')" class="flex gap-1.5">
+                  <button @click="updateInvitation(interview, 'confirmed')" class="flex items-center gap-1 px-3 py-1.5 bg-green-500/10 text-green-500 hover:bg-green-500/20 rounded-lg text-xs font-bold transition-all">
+                    <CheckCircle class="w-3.5 h-3.5" /> Подтвердить
+                  </button>
+                  <button @click="updateInvitation(interview, 'declined')" class="flex items-center gap-1 px-3 py-1.5 bg-red-400/10 text-red-400 hover:bg-red-400/20 rounded-lg text-xs font-bold transition-all">
+                    <XCircle class="w-3.5 h-3.5" /> Отклонить
+                  </button>
+                </div>
+              </div>
             </div>
           </template>
         </div>

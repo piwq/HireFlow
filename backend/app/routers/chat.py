@@ -68,8 +68,10 @@ async def websocket_endpoint(ws: WebSocket, token: str = Query(...)):
                 "created_at": msg.created_at.isoformat(),
             }
 
-            # Send to receiver if online, and echo back to sender
-            await manager.send_to(receiver_id, msg_data)
+            # Send to receiver using unified notifications (so it hits Telegram and toast notifications)
+            from app.services.notifications import notify_user
+            await notify_user(receiver_id, "new_message", msg_data)
+            # Echo back raw message to sender
             await manager.send_to(user_id, msg_data)
 
     except WebSocketDisconnect:
@@ -98,6 +100,8 @@ async def unread_counts(
 @router.get("/messages/{other_user_id}", response_model=list[MessageResponse])
 async def get_conversation(
     other_user_id: int,
+    limit: int = 50,
+    offset: int = 0,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -109,9 +113,13 @@ async def get_conversation(
                 and_(Message.sender_id == other_user_id, Message.receiver_id == current_user.id),
             )
         )
-        .order_by(Message.created_at)
+        .order_by(Message.created_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
-    return result.scalars().all()
+    messages = list(result.scalars().all())
+    messages.reverse()
+    return messages
 
 
 @router.post("/messages/read/{other_user_id}")

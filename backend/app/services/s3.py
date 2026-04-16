@@ -18,6 +18,28 @@ def get_s3_client():
             aws_secret_access_key=settings.minio_secret_key,
             region_name="us-east-1",
         )
+        # Автоматическое создание бакета при запуске, если его нет
+        try:
+            _client.head_bucket(Bucket=settings.minio_bucket)
+        except:
+            try:
+                _client.create_bucket(Bucket=settings.minio_bucket)
+                # Делаем бакет публичным для чтения (так как мы отдаем прямые ссылки)
+                # Это упрощенная политика для хакатона
+                policy = {
+                    "Version": "2012-10-17",
+                    "Statement": [{
+                        "Sid": "PublicRead",
+                        "Effect": "Allow",
+                        "Principal": "*",
+                        "Action": ["s3:GetObject"],
+                        "Resource": [f"arn:aws:s3:::{settings.minio_bucket}/*"]
+                    }]
+                }
+                import json
+                _client.put_bucket_policy(Bucket=settings.minio_bucket, Policy=json.dumps(policy))
+            except Exception as e:
+                print(f"Failed to create bucket: {e}")
     return _client
 
 

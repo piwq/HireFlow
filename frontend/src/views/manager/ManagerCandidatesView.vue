@@ -268,5 +268,4 @@ function initials(name) {
         </div>
       </div>
     </Teleport>
-  </div>
 </template>

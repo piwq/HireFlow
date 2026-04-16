@@ -2,14 +2,16 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useThemeStore } from '@/stores/theme.js'
+import { useAuthStore } from '@/stores/auth.js'
 import AppLayout from '@/components/AppLayout.vue'
 
 const theme = useThemeStore()
 const route = useRoute()
+const auth = useAuthStore()
 
 // HR, Manager and Candidate get the sidebar layout
 const useLayout = computed(() => {
-  const userRole = localStorage.getItem('role') || ''
+  const userRole = auth.role || ''
   if (!['hr', 'manager', 'candidate', 'admin'].includes(userRole)) return false
   const { role, roles, guest } = route.meta
   if (guest) return false

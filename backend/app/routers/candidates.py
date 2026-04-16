@@ -1,6 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 import os
+import io
+import json
 import google.generativeai as genai
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -25,15 +28,50 @@ import asyncio
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 
 
+from app.models.application import Application
+from app.models.interview import Interview
+
 @router.get("/", response_model=list[ProfileResponse])
 async def list_candidates(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role("hr", "manager", "admin")),
+    current_user: User = Depends(require_role("hr", "manager", "admin")),
+    q: str | None = None,
+    skills: str | None = None,
+    city: str | None = None,
+    min_salary: int | None = None,
+    max_salary: int | None = None,
+    work_format: str | None = None,
+    employment_type: str | None = None,
+    desired_position: str | None = None,
+    level: str | None = None,
 ):
-    result = await db.execute(
-        select(CandidateProfile).options(selectinload(CandidateProfile.user))
-    )
-    profiles = result.scalars().all()
+    stmt = select(CandidateProfile).options(selectinload(CandidateProfile.user))
+    
+    if current_user.role == "manager":
+        # Managers only see candidates assigned to them for interviews
+        stmt = stmt.join(CandidateProfile.applications).join(Application.interview).where(Interview.manager_id == current_user.id)
+        
+    if q:
+        stmt = stmt.where(CandidateProfile.full_name.ilike(f"%{q}%"))
+    if skills:
+        stmt = stmt.where(CandidateProfile.skills.ilike(f"%{skills}%"))
+    if city:
+        stmt = stmt.where(CandidateProfile.city.ilike(f"%{city}%"))
+    if min_salary is not None:
+        stmt = stmt.where(CandidateProfile.salary_from >= min_salary)
+    if max_salary is not None:
+        stmt = stmt.where(CandidateProfile.salary_to <= max_salary)
+    if work_format:
+        stmt = stmt.where(CandidateProfile.work_format.ilike(f"%{work_format}%"))
+    if employment_type:
+        stmt = stmt.where(CandidateProfile.employment_type.ilike(f"%{employment_type}%"))
+    if desired_position:
+        stmt = stmt.where(CandidateProfile.desired_position.ilike(f"%{desired_position}%"))
+    if level:
+        stmt = stmt.where(CandidateProfile.level.ilike(f"%{level}%"))
+    
+    result = await db.execute(stmt)
+    profiles = result.scalars().unique().all()
     out = []
     for p in profiles:
         out.append(ProfileResponse(
@@ -59,6 +97,7 @@ async def list_candidates(
             employment_type=p.employment_type,
             work_format=p.work_format,
             relocation_ready=p.relocation_ready,
+            photo_url=p.photo_url,
         ))
     return out
 
@@ -97,6 +136,7 @@ async def get_my_profile(
         employment_type=profile.employment_type,
         work_format=profile.work_format,
         relocation_ready=profile.relocation_ready,
+        photo_url=profile.photo_url,
     )
 
 
@@ -127,6 +167,7 @@ async def upsert_profile(
         "employment_type": body.employment_type,
         "work_format": body.work_format,
         "relocation_ready": body.relocation_ready,
+        "photo_url": body.photo_url,
     }
 
     if profile:
@@ -176,47 +217,30 @@ async def upsert_profile(
         relocation_ready=profile.relocation_ready,
     )
 
+# --- AI Resilient Fallback Logic ---
+MODELS_TO_TRY = ["gemini-3-flash-preview", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
 
-@router.post("/ai/enhance", response_model=ResumeAIResponse)
-async def ai_enhance_resume(
-    body: ResumeEnhanceRequest,
-    current_user: User = Depends(require_role("candidate")),
-):
-    await asyncio.sleep(2) # Mock processing time
-    
-    base_skills = body.current_skills or ""
-    base_exp = body.current_experience or ""
-    
-    # Mock enhancement
-    enhanced_skills = f"{base_skills}, ИИ-оптимизация, Cloud Native, Быстрая адаптация, Системное мышление" if base_skills else "ИИ-оптимизация, Структурированный подход, Кросс-функциональное взаимодействие"
-    enhanced_exp = f"{base_exp}\n\n[Улучшено ИИ]: Оптимизировал рабочие процессы, повысил эффективность коммуникации в команде на 20%. Успешно применял современные практики ведения проектов." if base_exp else "[Сгенерировано ИИ]: Успешный опыт решения сложных задач, ориентация на результат, проактивная позиция."
-    
-    return ResumeAIResponse(
-        enhanced_skills=enhanced_skills.strip().strip(", "),
-        enhanced_experience=enhanced_exp.strip()
-    )
-
-
-@router.post("/ai/generate", response_model=ResumeAIResponse)
-async def ai_generate_resume(
-    body: ResumeGenerateRequest,
-    current_user: User = Depends(require_role("candidate")),
-):
-    await asyncio.sleep(3) # Mock processing time
-    
-    # Extract answers based on the 3 planned questions
-    job_title = body.answers[0] if len(body.answers) > 0 else "Специалист"
-    past_exp = body.answers[1] if len(body.answers) > 1 else ""
-    skills = body.answers[2] if len(body.answers) > 2 else ""
-    
-    enhanced_skills = f"{skills}, Agile, Работа в команде, Инициативность, Аналитическое мышление" if skills else "Agile, Работа в команде, Инициативность, Аналитическое мышление"
-    enhanced_exp = f"Претендую на позицию: {job_title}\n\n[Предыдущий опыт]: {past_exp}\n\n[Достижения, сгенерированные ИИ]:\n- Эффективно решал поставленные задачи.\n- Быстро осваивал новые технологии.\n- Демонстрировал высокую вовлеченность в проекты."
-    
-    return ResumeAIResponse(
-        enhanced_skills=enhanced_skills.strip().strip(", "),
-        enhanced_experience=enhanced_exp.strip()
-    )
-
+async def run_genai_with_fallback(prompt, stream=False, **kwargs):
+    last_err = Exception("All AI models failed")
+    for name in MODELS_TO_TRY:
+        try:
+            # Префикс models/ часто помогает избежать 404 в v1beta
+            full_name = f"models/{name}" if not name.startswith("models/") else name
+            model = genai.GenerativeModel(full_name)
+            
+            if stream:
+                res = await model.generate_content_async(prompt, stream=True, **kwargs)
+            else:
+                res = await model.generate_content_async(prompt, **kwargs)
+            
+            return res, name
+        except Exception as e:
+            last_err = e
+            print(f"DEBUG: AI Model {name} failed: {str(e)}", flush=True)
+            continue
+            
+    # Если мы дошли сюда, значит всё упало
+    raise Exception(f"Ни одна из моделей ({', '.join(MODELS_TO_TRY)}) не ответила. Последняя ошибка: {str(last_err)}")
 
 @router.post("/ai/generate-stream")
 async def ai_generate_stream(
@@ -271,17 +295,16 @@ Email кандидата: {current_user.email} (Сделай заголовок 
         return StreamingResponse(fallback_stream(), media_type="text/plain")
 
     genai.configure(api_key=gemini_key)
-    model = genai.GenerativeModel("gemini-2.5-flash")
-
+    
     try:
-        response = await model.generate_content_async(prompt, stream=True)
+        response, used_model = await run_genai_with_fallback(prompt, stream=True)
     except Exception as e:
         error_msg = str(e)
         if "User location" in error_msg:
              error_msg = "Google Gemini заблокирован в вашем регионе. Включите VPN для Docker-контейнера сервера!"
-        async def fallback_stream():
+        async def fallback_stream_err():
              yield str(f"\n\n**[Ошибка API ИИ]** Генерация прервана: {error_msg}").encode("utf-8")
-        return StreamingResponse(fallback_stream(), media_type="text/plain")
+        return StreamingResponse(fallback_stream_err(), media_type="text/plain")
 
     async def generate_chunks():
         try:
@@ -289,7 +312,7 @@ Email кандидата: {current_user.email} (Сделай заголовок 
                 if chunk.text:
                     yield chunk.text.encode("utf-8")
         except Exception as e:
-            yield str(f"\n\n**[Ошибка ИИ]** Генерация прервана: {e}").encode("utf-8")
+            yield str(f"\n\n**[Ошибка ИИ]** ({used_model}): {e}").encode("utf-8")
 
     return StreamingResponse(generate_chunks(), media_type="text/plain")
 
@@ -319,17 +342,16 @@ async def ai_enhance_stream(
         return StreamingResponse(fallback_stream_enhance(), media_type="text/plain")
 
     genai.configure(api_key=gemini_key)
-    model = genai.GenerativeModel("gemini-2.5-flash")
-
+    
     try:
-        response = await model.generate_content_async(prompt, stream=True)
+        response, used_model = await run_genai_with_fallback(prompt, stream=True)
     except Exception as e:
         error_msg = str(e)
         if "User location" in error_msg:
              error_msg = "Google Gemini заблокирован в вашем регионе. Включите VPN для Docker-контейнера сервера!"
-        async def fallback_stream2():
+        async def fallback_stream_err2():
              yield str(f"\n\n**[Ошибка API ИИ]** Обновление прервано: {error_msg}").encode("utf-8")
-        return StreamingResponse(fallback_stream2(), media_type="text/plain")
+        return StreamingResponse(fallback_stream_err2(), media_type="text/plain")
 
     async def generate_chunks():
         try:
@@ -337,10 +359,43 @@ async def ai_enhance_stream(
                 if chunk.text:
                     yield chunk.text.encode("utf-8")
         except Exception as e:
-            yield str(f"\n\n**[Ошибка ИИ]** Обновление прервано: {e}").encode("utf-8")
+            yield str(f"\n\n**[Ошибка ИИ]** ({used_model}): {e}").encode("utf-8")
 
     return StreamingResponse(generate_chunks(), media_type="text/plain")
 
+
+class SuggestRequest(BaseModel):
+    field: str
+    context: str | None = None
+
+
+@router.post("/ai/suggest")
+async def suggest_field(
+    body: SuggestRequest,
+    current_user: User = Depends(require_role("candidate"))
+):
+    """Generate a single professional suggestion for a profile field."""
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if not gemini_key:
+        return {"suggestion": "ИИ-подсказки временно недоступны (нет ключа)"}
+
+    genai.configure(api_key=gemini_key)
+
+    system_prompt = (
+        "Ты — профессиональный HR-консультант. "
+        "Пользователь заполняет профиль и прислал черновик поля. "
+        "Напиши один короткий, профессиональный и впечатляющий вариант заполнения этого поля на русском языке. "
+        "Не используй кавычки, вступления и пояснения. Только сам текст для поля."
+    )
+    
+    prompt = f"Поле: {body.field}\nЧерновик пользователя: {body.context or 'пусто'}\nКонтекст: Вакансия в IT."
+    
+    try:
+        items = [{"role": "user", "parts": [system_prompt, prompt]}]
+        response, used_model = await run_genai_with_fallback(items)
+        return {"suggestion": response.text.strip().replace('"', ''), "model": used_model}
+    except Exception as e:
+        return {"suggestion": f"Ошибка ИИ: {str(e)}"}
 
 @router.get("/ai/draft", response_model=DraftResponse)
 async def get_draft(
@@ -378,3 +433,120 @@ async def save_draft(
         
     await db.commit()
     return {"status": "ok"}
+
+@router.post("/parse-gosuslugi")
+async def parse_gosuslugi_pdf(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_role("candidate")),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Парсит PDF-выписку из трудовой книжки (Госуслуги) с помощью ИИ.
+    """
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if gemini_key:
+        genai.configure(api_key=gemini_key)
+        
+    # Валидация размера файла (10 МБ)
+    MAX_SIZE = 10 * 1024 * 1024
+    size = getattr(file, "size", None)
+    if size is None:
+        file.file.seek(0, 2)
+        size = file.file.tell()
+        file.file.seek(0)
+    
+    if size > MAX_SIZE:
+        raise HTTPException(status_code=413, detail=f"PDF файл слишком большой ({size / 1024 / 1024:.1f} МБ). Максимум: 10 МБ")
+
+    try:
+        import pdfplumber
+        content = await file.read()
+        pdf_text = ""
+        
+        # Экстракция текста с сохранением макета (важно для таблиц)
+        with pdfplumber.open(io.BytesIO(content)) as pdf:
+            for page in pdf.pages:
+                pdf_text += page.extract_text(layout=True) or ""
+        
+        if not pdf_text.strip():
+            return {"error": "Не удалось извлечь текст из PDF. Возможно, файл пуст или защищен."}
+
+        system_prompt = (
+            "Ты — профессиональный ИИ-ассистент, специализирующийся на анализе российских кадровых документов. "
+            "Твоя задача — проанализировать текст выписки из электронной трудовой книжки (Госуслуги) и извлечь историю работы. "
+            "Ты должен вернуть ТОЛЬКО чистый JSON-массив объектов опыта работы."
+        )
+        
+        prompt = (
+            "Проанализируй текст и извлеки последовательность записей 'ПРИЕМ', 'ПЕРЕВОД', 'УВОЛЬНЕНИЕ'. "
+            "Сгруппируй их по работодателю. Если был ПРИЕМ и потом УВОЛЬНЕНИЕ у одного работодателя — это один период. "
+            "Если был ПЕРЕВОД, используй последнюю должность в этом периоде.\n\n"
+            "Структура JSON-объекта в массиве:\n"
+            "{\n"
+            "  \"company\": \"Название работодателя (без лишних ОГРН/ИНН)\",\n"
+            "  \"position\": \"Должность\",\n"
+            "  \"period\": \"ДД.ММ.ГГГГ — ДД.ММ.ГГГГ\" (или 'Настоящее время', если нет записи об увольнении),\n"
+            "  \"responsibilities\": \"Сформулируй 3-4 предложения описывающих типичные обязанности и достижения для этой роли.\"\n"
+            "}\n\n"
+            "Текст выписки:\n"
+            f"{pdf_text[:12000]}"
+        )
+        
+        items = [{"role": "user", "parts": [system_prompt, prompt]}]
+        response, used_model = await run_genai_with_fallback(items)
+        
+        # Очистка ответа от Markdown-обертки
+        clean_text = response.text.strip()
+        if clean_text.startswith("```"):
+            # Удаляем первую и последнюю строки с ```
+            lines = clean_text.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines[-1].startswith("```"):
+                lines = lines[:-1]
+            clean_text = "\n".join(lines).strip()
+            if clean_text.startswith("json"):
+                clean_text = clean_text[4:].strip()
+        
+        try:
+            experiences_raw = json.loads(clean_text)
+            
+            # Достаем ID профиля
+            stmt = select(CandidateProfile).where(CandidateProfile.user_id == current_user.id)
+            res = await db.execute(stmt)
+            profile = res.scalar_one_or_none()
+            if not profile:
+                return {"error": "Профиль не найден"}
+
+            # Сохраняем в базу пакетно
+            from app.models.work_experience import WorkExperience
+            saved_items = []
+            for exp in experiences_raw:
+                new_we = WorkExperience(
+                    candidate_id=profile.id,
+                    company=exp.get("company", ""),
+                    position=exp.get("position", ""),
+                    period=exp.get("period", ""),
+                    responsibilities=exp.get("responsibilities", "")
+                )
+                db.add(new_we)
+                saved_items.append({
+                    "id": 0, # Placeholder, will be updated after commit if needed, 
+                    "company": new_we.company,
+                    "position": new_we.position,
+                    "period": new_we.period,
+                    "responsibilities": new_we.responsibilities
+                })
+            
+            await db.commit()
+            
+            # Обновляем ID в ответе для фронтенда (чтобы можно было сразу редактировать/удалять)
+            # Фронтенду лучше перезагрузить список или просто получить объекты с ID
+            # Но для скорости мы просто вернем статус "ок" и попросим фронт обновиться
+            return {"status": "success", "count": len(saved_items), "model": used_model}
+            
+        except Exception as json_err:
+            return {"error": f"Ошибка обработки JSON от ИИ: {str(json_err)}", "raw_response": clean_text}
+            
+    except Exception as e:
+        return {"error": f"Ошибка сервера при парсинге: {str(e)}"}

@@ -1,12 +1,33 @@
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# Environments
 .env
 .env.local
 .env.*.local
 .venv/
+venv/
+ENV/
+
+# Node.js
 node_modules/
 dist/
-*.egg-info/
+dist-ssr/
+*.log
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
 .DS_Store
+
+# Project specific
 .claude/
+.gemini/
+trud.pdf
 backend/alembic.ini
+backend/data/

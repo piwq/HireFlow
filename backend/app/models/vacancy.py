@@ -11,4 +11,4 @@ class Vacancy(Base):
     title: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    applications: Mapped[list["Application"]] = relationship(back_populates="vacancy")
+    applications: Mapped[list["Application"]] = relationship(back_populates="vacancy", cascade="all, delete-orphan")

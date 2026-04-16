@@ -19,9 +19,10 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     telegram_bot_token: str = ""
     telegram_bot_username: str = ""
+    frontend_url: str = "http://localhost:5173"
 
     class Config:
-        env_file = ".env"
+        env_file = (".env", "../.env")
 
 
 settings = Settings()

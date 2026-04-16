@@ -6,6 +6,7 @@ class ProfileUpsert(BaseModel):
     skills: str | None = None
     experience: str | None = None
     resume_url: str | None = None
+    photo_url: str | None = None
     # Extended fields per ТЗ
     phone: str | None = None
     city: str | None = None
@@ -31,6 +32,7 @@ class ProfileResponse(BaseModel):
     skills: str | None
     experience: str | None
     resume_url: str | None
+    photo_url: str | None = None
     email: str | None = None
     phone: str | None = None
     city: str | None = None

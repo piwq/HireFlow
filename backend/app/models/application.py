@@ -33,4 +33,5 @@ class Application(Base):
 
     candidate: Mapped["CandidateProfile"] = relationship(back_populates="applications")
     vacancy: Mapped["Vacancy"] = relationship(back_populates="applications")
-    interview: Mapped["Interview"] = relationship(back_populates="application", uselist=False)
+    interview: Mapped["Interview"] = relationship(back_populates="application", uselist=False, cascade="all, delete-orphan")
+    status_history: Mapped[list["StatusHistory"]] = relationship(cascade="all, delete-orphan")

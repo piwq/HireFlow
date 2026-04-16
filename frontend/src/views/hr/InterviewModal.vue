@@ -1,20 +1,22 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/api/index.js'
 import { Calendar, Clock, X, Loader2, AlertCircle, MapPin, MessageSquare, User } from 'lucide-vue-next'
 
-const props = defineProps({ application: Object })
-const emit = defineEmits(['close', 'created'])
+const props = defineProps({ application: Object, interview: Object })
+const emit = defineEmits(['close', 'created', 'updated'])
 
-const date = ref('')
-const time = ref('')
-const format = ref('online')
-const location = ref('')
-const comment = ref('')
-const managerId = ref(null)
+const date = ref(props.interview?.scheduled_at ? props.interview.scheduled_at.split('T')[0] : '')
+const time = ref(props.interview?.scheduled_at ? props.interview.scheduled_at.split('T')[1].substring(0,5) : '')
+const format = ref(props.interview?.format || 'online')
+const location = ref(props.interview?.location || '')
+const comment = ref(props.interview?.comment || '')
+const managerId = ref(props.interview?.manager_id || null)
 const managers = ref([])
 const error = ref('')
 const loading = ref(false)
+
+const isEdit = computed(() => !!props.interview)
 
 onMounted(async () => {
   try {
@@ -31,17 +33,26 @@ async function submit() {
   }
   loading.value = true
   try {
-    await api.post('/interviews/', {
-      application_id: props.application.id,
+    const payload = {
       scheduled_at: `${date.value}T${time.value}:00`,
       format: format.value,
       location: location.value || null,
       comment: comment.value || null,
       manager_id: managerId.value || null,
-    })
-    emit('created')
+    }
+    
+    if (isEdit.value) {
+      await api.put(`/interviews/${props.interview.id}`, payload)
+      emit('updated')
+    } else {
+      await api.post('/interviews/', {
+        application_id: props.application.id,
+        ...payload
+      })
+      emit('created')
+    }
   } catch (e) {
-    error.value = e.response?.data?.detail || 'Ошибка создания'
+    error.value = e.response?.data?.detail || 'Ошибка сохранения'
   } finally {
     loading.value = false
   }

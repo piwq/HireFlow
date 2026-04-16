@@ -8,6 +8,7 @@ class MessageResponse(BaseModel):
     receiver_id: int
     text: str
     created_at: datetime
+    is_read: bool
 
     model_config = {"from_attributes": True}
 
@@ -17,3 +18,5 @@ class UserListItem(BaseModel):
     email: str
     role: str
     full_name: str | None = None
+    profile_id: int | None = None
+    last_message_at: datetime | None = None

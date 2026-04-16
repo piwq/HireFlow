@@ -1,4 +1,4 @@
-from sqlalchemy import String, Text, ForeignKey, Integer, Boolean, Date
+from sqlalchemy import String, Text, ForeignKey, Integer, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -20,6 +20,7 @@ class CandidateProfile(Base):
     city: Mapped[str | None] = mapped_column(String(100), nullable=True)
     citizenship: Mapped[str | None] = mapped_column(String(100), nullable=True)
     birth_date: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     linkedin: Mapped[str | None] = mapped_column(String(255), nullable=True)
     github: Mapped[str | None] = mapped_column(String(255), nullable=True)
     portfolio: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -35,3 +36,7 @@ class CandidateProfile(Base):
     user: Mapped["User"] = relationship(back_populates="profile")
     applications: Mapped[list["Application"]] = relationship(back_populates="candidate")
     documents: Mapped[list["Document"]] = relationship(back_populates="candidate")
+    work_experiences: Mapped[list["WorkExperience"]] = relationship(back_populates="candidate", cascade="all, delete-orphan")
+    educations: Mapped[list["Education"]] = relationship(back_populates="candidate", cascade="all, delete-orphan")
+    languages: Mapped[list["Language"]] = relationship(back_populates="candidate", cascade="all, delete-orphan")
+    projects: Mapped[list["ProjectCertificate"]] = relationship(back_populates="candidate", cascade="all, delete-orphan")

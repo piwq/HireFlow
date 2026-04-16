@@ -2,10 +2,12 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/api/index.js'
+import InterviewModal from './InterviewModal.vue'
 import {
   ArrowLeft, User, FileText, ExternalLink, Calendar, MessageSquare,
   Clock, CheckCircle, XCircle, Loader2, Star, Mail, Phone,
-  MapPin, Globe, Github, Briefcase, DollarSign, Link,
+  MapPin, Globe, Github, Briefcase, DollarSign, Link, StickyNote, Plus, Trash2,
+  Edit2,
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -19,6 +21,8 @@ const documents = ref([])
 const interviews = ref([])
 const feedbacks = ref([])
 const statusHistory = ref([])
+const notes = ref([])
+const newNote = ref('')
 const loading = ref(true)
 
 const STATUS_LABELS = {
@@ -44,7 +48,11 @@ const REC_COLORS = {
 const DOC_LABELS = {
   resume: 'Резюме', cover_letter: 'Сопр. письмо', certificate: 'Сертификат', diploma: 'Диплом', other: 'Иное',
 }
-const FORMAT_LABELS = { online: '🌐 Онлайн', offline: '🏢 Офлайн', phone: '📞 Телефон' }
+const FORMAT_LABELS = { online: 'Онлайн', offline: 'Офлайн', phone: 'Телефон' }
+
+const selectedInterview = ref(null)
+const selectedApplication = ref(null)
+const showInterviewModal = ref(false)
 
 onMounted(async () => {
   loading.value = true
@@ -78,9 +86,58 @@ onMounted(async () => {
       applications.value.map(a => api.get(`/applications/${a.id}/history`).then(r => r.data).catch(() => []))
     )
     statusHistory.value = historyResults.flat().sort((a, b) => new Date(b.changed_at) - new Date(a.changed_at))
+
+    // Load notes
+    try {
+      const notesRes = await api.get(`/notes/candidate/${candidateId.value}`)
+      notes.value = notesRes.data
+    } catch {}
   } catch {}
   loading.value = false
 })
+
+async function addNote() {
+  if (!newNote.value.trim()) return
+  try {
+    const res = await api.post('/notes/', { candidate_id: candidateId.value, text: newNote.value })
+    notes.value.unshift(res.data)
+    newNote.value = ''
+  } catch (e) {
+    alert(e.response?.data?.detail || 'Ошибка')
+  }
+}
+
+async function deleteNote(id) {
+  try {
+    await api.delete(`/notes/${id}`)
+    notes.value = notes.value.filter(n => n.id !== id)
+  } catch (e) {
+    alert(e.response?.data?.detail || 'Ошибка')
+  }
+}
+
+function editInterview(iv) {
+  selectedApplication.value = applications.value.find(a => a.id === iv.application_id) || { id: iv.application_id }
+  selectedInterview.value = iv
+  showInterviewModal.value = true
+}
+
+async function handleInterviewUpdated() {
+  showInterviewModal.value = false
+  const allInterviews = await api.get('/interviews/')
+  const appIds = new Set(applications.value.map(a => a.id))
+  interviews.value = allInterviews.data.filter(i => appIds.has(i.application_id))
+}
+
+async function cancelInterview(id) {
+  if (!confirm('Вы уверены, что хотите отменить это собеседование?')) return
+  try {
+    await api.delete(`/interviews/${id}`)
+    interviews.value = interviews.value.filter(i => i.id !== id)
+  } catch (e) {
+    alert(e.response?.data?.detail || 'Ошибка')
+  }
+}
 
 function formatDate(dt) {
   if (!dt) return ''
@@ -225,6 +282,37 @@ const currentStatus = computed(() => {
             </div>
           </div>
 
+          <!-- HR Notes -->
+          <div class="bg-brand-light-surface dark:bg-brand-dark-surface rounded-2xl border border-brand-light-border dark:border-brand-dark-border p-6">
+            <h3 class="text-sm font-bold text-brand-light-secondary dark:text-brand-dark-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
+              <StickyNote class="w-4 h-4" /> Внутренние заметки ({{ notes.length }})
+            </h3>
+            <div class="flex gap-2 mb-4">
+              <input
+                v-model="newNote"
+                @keyup.enter="addNote"
+                type="text"
+                placeholder="Добавить заметку..."
+                class="flex-1 bg-brand-light-elevated dark:bg-brand-dark-elevated border border-brand-light-border dark:border-brand-dark-border rounded-xl px-3 py-2 text-sm text-brand-light-primary dark:text-brand-dark-primary focus:outline-none focus:border-brand-accent"
+              />
+              <button @click="addNote" class="px-3 py-2 bg-brand-accent text-white rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
+                <Plus class="w-4 h-4" />
+              </button>
+            </div>
+            <div v-if="!notes.length" class="text-caption text-brand-light-muted dark:text-brand-dark-muted text-center py-2">Заметок нет</div>
+            <div class="space-y-2">
+              <div v-for="note in notes" :key="note.id" class="p-3 bg-brand-light-elevated dark:bg-brand-dark-elevated rounded-xl flex items-start gap-3">
+                <div class="flex-1">
+                  <p class="text-sm text-brand-light-primary dark:text-brand-dark-primary">{{ note.text }}</p>
+                  <p class="text-micro text-brand-light-muted dark:text-brand-dark-muted mt-1">{{ formatDateShort(note.created_at) }}</p>
+                </div>
+                <button @click="deleteNote(note.id)" class="p-1 text-red-400 hover:bg-red-400/10 rounded transition-colors shrink-0">
+                  <Trash2 class="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Status History -->
           <div class="bg-brand-light-surface dark:bg-brand-dark-surface rounded-2xl border border-brand-light-border dark:border-brand-dark-border p-6">
             <h3 class="text-sm font-bold text-brand-light-secondary dark:text-brand-dark-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
@@ -284,18 +372,41 @@ const currentStatus = computed(() => {
             <div v-if="!interviews.length" class="text-caption text-brand-light-muted dark:text-brand-dark-muted text-center py-3">Собеседований нет</div>
             <div class="space-y-2">
               <div v-for="iv in interviews" :key="iv.id" class="p-3 bg-brand-light-elevated dark:bg-brand-dark-elevated rounded-xl">
-                <div class="flex items-center gap-2 text-xs font-bold text-brand-status-interview">
-                  <Calendar class="w-3.5 h-3.5" />
-                  {{ formatDate(iv.scheduled_at) }}
+                <div class="flex items-start justify-between">
+                  <div>
+                    <div class="flex items-center gap-2 text-xs font-bold text-brand-status-interview">
+                      <Calendar class="w-3.5 h-3.5" />
+                      {{ formatDate(iv.scheduled_at) }}
+                    </div>
+                    <div v-if="iv.format" class="text-xs text-brand-light-muted dark:text-brand-dark-muted mt-1">{{ FORMAT_LABELS[iv.format] || iv.format }}</div>
+                    <div v-if="iv.location" class="text-xs text-brand-light-muted dark:text-brand-dark-muted">📍 {{ iv.location }}</div>
+                    <div v-if="iv.comment" class="text-xs text-brand-light-secondary dark:text-brand-dark-secondary mt-1 italic">{{ iv.comment }}</div>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <button @click="editInterview(iv)" class="p-1.5 text-brand-light-muted hover:text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors" title="Изменить">
+                      <Edit2 class="w-3.5 h-3.5" />
+                    </button>
+                    <button @click="cancelInterview(iv.id)" class="p-1.5 text-brand-light-muted hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors" title="Отменить">
+                      <XCircle class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
-                <div v-if="iv.format" class="text-xs text-brand-light-muted dark:text-brand-dark-muted mt-1">{{ FORMAT_LABELS[iv.format] || iv.format }}</div>
-                <div v-if="iv.location" class="text-xs text-brand-light-muted dark:text-brand-dark-muted">📍 {{ iv.location }}</div>
-                <div v-if="iv.comment" class="text-xs text-brand-light-secondary dark:text-brand-dark-secondary mt-1 italic">{{ iv.comment }}</div>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+    
+    <!-- Interview Edit Modal -->
+    <Teleport to="body">
+      <InterviewModal
+        v-if="showInterviewModal"
+        :application="selectedApplication"
+        :interview="selectedInterview"
+        @close="showInterviewModal = false"
+        @updated="handleInterviewUpdated"
+      />
+    </Teleport>
   </div>
 </template>

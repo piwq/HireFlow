@@ -4,10 +4,11 @@ from sqlalchemy import select
 
 from app.database import get_db
 from app.deps import get_current_user, require_role
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.feedback import Feedback
 from app.models.interview import Interview
 from app.schemas.feedback import FeedbackCreate, FeedbackResponse
+from app.services.notifications import notify_users
 
 router = APIRouter(prefix="/feedbacks", tags=["feedbacks"])
 
@@ -37,6 +38,16 @@ async def create_feedback(
     db.add(feedback)
     await db.commit()
     await db.refresh(feedback)
+
+    # Notify all HR users about new feedback
+    hr_res = await db.execute(select(User).where(User.role == UserRole.hr))
+    hr_ids = [u.id for u in hr_res.scalars().all()]
+    await notify_users(hr_ids, "new_feedback", {
+        "feedback_id": feedback.id,
+        "interview_id": feedback.interview_id,
+        "manager_id": current_user.id,
+    })
+
     return feedback
 
 

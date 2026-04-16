@@ -18,6 +18,7 @@ import {
   Mail,
   X,
   Video,
+  SlidersHorizontal,
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -59,6 +60,7 @@ const search = ref('')
 const filterStatus = ref('') // '' = all, or specific status key
 const filterVacancy = ref('') // '' = all, or vacancy id (as string)
 const showFilterMenu = ref(false)
+const showExtendedFilters = ref(false)
 const showEmptyColumns = ref(false)
 const showArchive = ref(false)
 const allApps = ref([])
@@ -67,6 +69,12 @@ const showModal = ref(false)
 const selectedApp = ref(null)
 const activeMenu = ref(null)
 const menuEl = ref(null)
+const filterSkills = ref('')
+const filterCity = ref('')
+const filterLevel = ref('')
+const filterWorkFormat = ref('')
+const filterSalaryMin = ref('')
+const filterSalaryMax = ref('')
 
 onMounted(loadData)
 
@@ -100,16 +108,30 @@ function updateColApps() {
       if (a.status !== status) return false
       if (filterStatus.value && a.status !== filterStatus.value) return false
       if (filterVacancy.value && String(a.vacancy_id) !== filterVacancy.value) return false
-      if (!search.value) return true
       const cand = candidateForApp(a)
-      const q = search.value.toLowerCase()
-      return cand?.full_name?.toLowerCase().includes(q) || cand?.email?.toLowerCase().includes(q)
+      if (!matchesExtendedFilters(cand)) return false
+      if (search.value) {
+        const q = search.value.toLowerCase()
+        return cand?.full_name?.toLowerCase().includes(q) || cand?.email?.toLowerCase().includes(q)
+      }
+      return true
     })
   }
 }
 
 import { watch, computed, onUnmounted } from 'vue'
-watch([search, filterStatus, filterVacancy], updateColApps)
+watch([search, filterStatus, filterVacancy, filterSkills, filterCity, filterLevel, filterWorkFormat, filterSalaryMin, filterSalaryMax], updateColApps)
+
+function matchesExtendedFilters(cand) {
+  if (!cand) return true
+  if (filterSkills.value && !(cand.skills || '').toLowerCase().includes(filterSkills.value.toLowerCase())) return false
+  if (filterCity.value && !(cand.city || '').toLowerCase().includes(filterCity.value.toLowerCase())) return false
+  if (filterLevel.value && cand.level !== filterLevel.value) return false
+  if (filterWorkFormat.value && !(cand.work_format || '').toLowerCase().includes(filterWorkFormat.value.toLowerCase())) return false
+  if (filterSalaryMin.value && (cand.salary_from || 0) < Number(filterSalaryMin.value)) return false
+  if (filterSalaryMax.value && (cand.salary_to || 999999999) > Number(filterSalaryMax.value)) return false
+  return true
+}
 
 const visibleColumns = computed(() =>
   showEmptyColumns.value
@@ -212,78 +234,86 @@ async function updateAppStatus(app, newStatus) {
 
 <template>
   <div class="h-full flex flex-col bg-brand-light-base dark:bg-brand-dark-base antialiased">
-    <div class="p-4 md:p-8 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-      <div>
-        <h1 class="text-2xl md:text-display text-brand-light-primary dark:text-brand-dark-primary flex items-center gap-3">
-          <Users class="w-7 h-7 text-brand-accent" />
-          Управление кандидатами
-        </h1>
-        <p class="text-sm md:text-body text-brand-light-secondary dark:text-brand-dark-secondary mt-1">Организуйте процесс подбора и меняйте этапы откликов</p>
-      </div>
-      
-      <div class="flex items-center gap-3 w-full md:w-auto flex-wrap">
-        <div class="relative flex-1 md:flex-none">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-brand-light-muted dark:text-brand-dark-muted" />
-          <input
-            v-model="search"
-            type="text"
-            placeholder="Поиск..."
-            class="bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-brand-light-primary dark:text-brand-dark-primary focus:outline-none focus:border-brand-accent focus:ring-4 focus:ring-brand-accent/5 transition-all w-full md:w-64"
-          />
+    <div class="p-4 md:p-8 pb-4 flex flex-col gap-4">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl md:text-display text-brand-light-primary dark:text-brand-dark-primary flex items-center gap-3">
+            <Users class="w-7 h-7 text-brand-accent" />
+            Управление кандидатами
+          </h1>
+          <p class="text-sm md:text-body text-brand-light-secondary dark:text-brand-dark-secondary mt-1">Организуйте процесс подбора и меняйте этапы откликов</p>
         </div>
-        <select
-          v-if="vacancies.length > 0"
-          v-model="filterVacancy"
-          class="bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border rounded-xl px-3 py-2.5 text-sm text-brand-light-primary dark:text-brand-dark-primary focus:outline-none focus:border-brand-accent transition-all appearance-none"
-          :class="filterVacancy ? 'border-brand-accent text-brand-accent' : ''"
-        >
-          <option value="">Все вакансии</option>
-          <option v-for="v in vacancies" :key="v.id" :value="String(v.id)">{{ v.title }}</option>
-        </select>
-        <button
-          @click="showEmptyColumns = !showEmptyColumns"
-          :class="[
-            'p-2.5 rounded-xl border bg-brand-light-surface dark:bg-brand-dark-surface transition-all text-xs font-bold whitespace-nowrap px-3',
-            showEmptyColumns
-              ? 'border-brand-accent text-brand-accent'
-              : 'border-brand-light-border dark:border-brand-dark-border text-brand-light-secondary dark:text-brand-dark-secondary hover:text-brand-light-primary dark:hover:text-brand-dark-primary'
-          ]"
-        >
-          {{ showEmptyColumns ? 'Скрыть пустые' : 'Все этапы' }}
-        </button>
-        <div class="relative">
+        
+        <div class="flex items-center gap-3 w-full md:w-auto flex-wrap">
+          <div class="relative flex-1 md:flex-none">
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-brand-light-muted dark:text-brand-dark-muted" />
+            <input
+              v-model="search"
+              type="text"
+              placeholder="Поиск..."
+              class="bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-brand-light-primary dark:text-brand-dark-primary focus:outline-none focus:border-brand-accent focus:ring-4 focus:ring-brand-accent/5 transition-all w-full md:w-64"
+            />
+          </div>
+
+          <select
+            v-if="vacancies.length > 0"
+            v-model="filterVacancy"
+            class="bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border rounded-xl px-3 py-2.5 text-sm text-brand-light-primary dark:text-brand-dark-primary focus:outline-none focus:border-brand-accent transition-all appearance-none"
+            :class="filterVacancy ? 'border-brand-accent text-brand-accent' : ''"
+          >
+            <option value="">Все вакансии</option>
+            <option v-for="v in vacancies" :key="v.id" :value="String(v.id)">{{ v.title }}</option>
+          </select>
           <button
-            @click.stop="showFilterMenu = !showFilterMenu"
+            @click="showExtendedFilters = !showExtendedFilters"
             :class="[
-              'p-2.5 rounded-xl border bg-brand-light-surface dark:bg-brand-dark-surface transition-all',
-              filterStatus
+              'p-2.5 rounded-xl border bg-brand-light-surface dark:bg-brand-dark-surface transition-all flex items-center gap-2 text-sm',
+              showExtendedFilters || filterSkills || filterCity || filterLevel || filterWorkFormat || filterSalaryMin || filterSalaryMax
                 ? 'border-brand-accent text-brand-accent'
                 : 'border-brand-light-border dark:border-brand-dark-border text-brand-light-secondary dark:text-brand-dark-secondary hover:text-brand-light-primary dark:hover:text-brand-dark-primary'
             ]"
           >
-            <Filter class="w-5 h-5" />
+            <SlidersHorizontal class="w-4.5 h-4.5" />
+            <span class="hidden md:inline">Фильтры</span>
           </button>
-          <div
-            v-if="showFilterMenu"
-            class="absolute right-0 mt-2 w-52 bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border rounded-xl shadow-xl z-20 py-2"
+          <select
+            v-model="filterStatus"
+            class="bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border rounded-xl px-3 py-2.5 text-sm text-brand-light-primary dark:text-brand-dark-primary focus:outline-none focus:border-brand-accent transition-all appearance-none"
+            :class="filterStatus ? 'border-brand-accent text-brand-accent' : ''"
           >
-            <button
-              @click="filterStatus = ''; showFilterMenu = false"
-              :class="['w-full text-left px-4 py-2 text-sm transition-colors flex items-center gap-2', !filterStatus ? 'text-brand-accent font-bold' : 'text-brand-light-secondary dark:text-brand-dark-secondary hover:bg-brand-light-elevated dark:hover:bg-brand-dark-elevated']"
-            >
-              Все этапы
-            </button>
-            <div class="h-px bg-brand-light-border dark:bg-brand-dark-border my-1"></div>
-            <button
-              v-for="col in columns"
-              :key="col.key"
-              @click="filterStatus = col.key; showFilterMenu = false"
-              :class="['w-full text-left px-4 py-2 text-sm transition-colors flex items-center gap-2', filterStatus === col.key ? 'text-brand-accent font-bold' : 'text-brand-light-secondary dark:text-brand-dark-secondary hover:bg-brand-light-elevated dark:hover:bg-brand-dark-elevated']"
-            >
-              <span :class="['w-2 h-2 rounded-full shrink-0', col.dot]"></span>
-              {{ col.label }}
-            </button>
-          </div>
+            <option value="">Все этапы</option>
+            <option v-for="col in columns" :key="col.key" :value="col.key">{{ col.label }}</option>
+          </select>
+          <button
+            @click="showEmptyColumns = !showEmptyColumns"
+            :class="[
+              'p-2.5 rounded-xl border bg-brand-light-surface dark:bg-brand-dark-surface transition-all text-xs font-bold whitespace-nowrap px-3',
+              showEmptyColumns
+                ? 'border-brand-accent text-brand-accent'
+                : 'border-brand-light-border dark:border-brand-dark-border text-brand-light-secondary dark:text-brand-dark-secondary hover:text-brand-light-primary dark:hover:text-brand-dark-primary'
+            ]"
+          >
+            {{ showEmptyColumns ? 'Скрыть пустые' : 'Показать пустые' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Extended Filters Row -->
+      <div v-show="showExtendedFilters" class="flex items-center gap-2 flex-wrap bg-brand-light-surface dark:bg-brand-dark-surface border border-brand-light-border dark:border-brand-dark-border rounded-2xl p-3 w-full shadow-sm">
+        <input v-model="filterSkills" type="text" placeholder="Навыки (напр. Python)..." class="bg-brand-light-base dark:bg-brand-dark-base border border-brand-light-border dark:border-brand-dark-border rounded-xl px-3 py-2 text-sm text-brand-light-primary dark:text-brand-dark-primary focus:outline-none focus:border-brand-accent flex-1 min-w-[140px]" />
+        <input v-model="filterCity" type="text" placeholder="Город..." class="bg-brand-light-base dark:bg-brand-dark-base border border-brand-light-border dark:border-brand-dark-border rounded-xl px-3 py-2 text-sm text-brand-light-primary dark:text-brand-dark-primary focus:outline-none focus:border-brand-accent flex-1 md:flex-none w-full md:w-32" />
+        <select v-model="filterLevel" class="bg-brand-light-base dark:bg-brand-dark-base border border-brand-light-border dark:border-brand-dark-border rounded-xl px-3 py-2 text-sm text-brand-light-primary dark:text-brand-dark-primary focus:outline-none focus:border-brand-accent appearance-none flex-1 md:flex-none w-full md:w-32" :class="filterLevel ? 'border-brand-accent' : ''">
+          <option value="">Уровень</option>
+          <option value="junior">Junior</option>
+          <option value="middle">Middle</option>
+          <option value="senior">Senior</option>
+          <option value="lead">Lead</option>
+        </select>
+        <input v-model="filterWorkFormat" type="text" placeholder="Формат..." class="bg-brand-light-base dark:bg-brand-dark-base border border-brand-light-border dark:border-brand-dark-border rounded-xl px-3 py-2 text-sm text-brand-light-primary dark:text-brand-dark-primary focus:outline-none focus:border-brand-accent flex-1 md:flex-none w-full md:w-32" />
+        <div class="flex items-center gap-2 flex-1 md:flex-none min-w-[180px]">
+          <input v-model="filterSalaryMin" type="number" placeholder="ЗП от" class="bg-brand-light-base dark:bg-brand-dark-base border border-brand-light-border dark:border-brand-dark-border rounded-xl px-3 py-2 text-sm text-brand-light-primary dark:text-brand-dark-primary focus:outline-none focus:border-brand-accent w-full" />
+          <span class="text-brand-light-muted dark:text-brand-dark-muted">-</span>
+          <input v-model="filterSalaryMax" type="number" placeholder="ЗП до" class="bg-brand-light-base dark:bg-brand-dark-base border border-brand-light-border dark:border-brand-dark-border rounded-xl px-3 py-2 text-sm text-brand-light-primary dark:text-brand-dark-primary focus:outline-none focus:border-brand-accent w-full" />
         </div>
       </div>
     </div>
@@ -466,12 +496,12 @@ async function updateAppStatus(app, newStatus) {
                       <X class="w-4 h-4" /> Отклонить
                     </button>
                     <div class="h-px bg-brand-light-border dark:bg-brand-dark-border my-1"></div>
-                    <a
-                      :href="`mailto:${candidateForApp(app)?.email}`"
+                    <button
+                      @click="router.push(`/chat?user=${candidateForApp(app)?.user_id}`); activeMenu = null"
                       class="w-full text-left px-4 py-2 text-sm text-brand-light-secondary dark:text-brand-dark-secondary hover:bg-brand-light-elevated dark:hover:bg-brand-dark-elevated flex items-center gap-2"
                     >
-                      <Mail class="w-4 h-4" /> Написать письмо
-                    </a>
+                      <Mail class="w-4 h-4" /> Написать сообщение
+                    </button>
                   </div>
                 </div>
               </div>
@@ -491,25 +521,26 @@ async function updateAppStatus(app, newStatus) {
                   v-if="candidateForApp(app)?.resume_url"
                   :href="candidateForApp(app)?.resume_url"
                   target="_blank"
-                  class="flex items-center gap-1.5 text-micro font-bold text-brand-accent hover:text-brand-accent-hover transition-colors"
+                  @click.stop
+                  class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-brand-accent/10 text-xs font-bold text-brand-accent hover:bg-brand-accent/20 transition-colors"
                 >
                   <FileText class="w-3.5 h-3.5" />
                   РЕЗЮМЕ
                 </a>
                 
-                <template v-if="app.status === 'interview'">
+                <template v-if="['interview', 'manager_interview'].includes(app.status)">
                   <button
                     v-if="interviewForApp(app)"
-                    @click="router.push(`/call/${interviewForApp(app).room_code}`)"
-                    class="flex items-center gap-1 text-micro font-bold text-brand-status-interview hover:opacity-80 transition-opacity uppercase"
+                    @click.stop="router.push(`/call/${interviewForApp(app).room_code}`)"
+                    class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-brand-status-interview/10 text-xs font-bold text-brand-status-interview hover:bg-brand-status-interview/20 transition-colors uppercase"
                   >
                     <Video class="w-3.5 h-3.5" />
                     Войти
                   </button>
                   <button
                     v-else
-                    @click="openInterviewModal(app)"
-                    class="flex items-center gap-1 text-micro font-bold text-brand-status-interview hover:opacity-80 transition-opacity uppercase"
+                    @click.stop="openInterviewModal(app)"
+                    class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-brand-status-interview/10 text-xs font-bold text-brand-status-interview hover:bg-brand-status-interview/20 transition-colors uppercase"
                   >
                     <Calendar class="w-3.5 h-3.5" />
                     Запись

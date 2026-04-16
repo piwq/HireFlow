@@ -16,6 +16,7 @@ class Interview(Base):
     location: Mapped[str | None] = mapped_column(String(500), nullable=True)
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     manager_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    invitation_status: Mapped[str | None] = mapped_column(String(20), nullable=True, default="pending")  # pending/confirmed/declined
 
     application: Mapped["Application"] = relationship(back_populates="interview")
-    feedbacks: Mapped[list["Feedback"]] = relationship(back_populates="interview")
+    feedbacks: Mapped[list["Feedback"]] = relationship(back_populates="interview", cascade="all, delete-orphan")

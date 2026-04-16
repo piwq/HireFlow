@@ -22,6 +22,8 @@ function buildText(event, data) {
       return data.status === 'accepted'
         ? 'Ваш запрос на интервью принят'
         : 'Ваш запрос на интервью отклонён'
+    case 'new_message':
+      return 'Новое сообщение в чате'
     default:
       return 'Новое уведомление'
   }

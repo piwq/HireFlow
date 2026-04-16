@@ -27,6 +27,10 @@ export function connectWS() {
     try {
       const msg = JSON.parse(event.data)
       if (msg.type === 'notification') {
+        if (msg.event === 'new_message') {
+          chatCallback?.(msg.data)
+          import('./unread.js').then(m => m.loadUnreadCounts())
+        }
         useNotificationsStore().add(msg)
       } else {
         chatCallback?.(msg)
