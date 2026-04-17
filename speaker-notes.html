@@ -227,19 +227,20 @@
     <a href="#s4"><b>04</b> Роли</a>
     <a href="#s5"><b>05</b> Стек</a>
     <a href="#s6"><b>06</b> Архитектура</a>
-    <a href="#s7"><b>07</b> ТЗ ч.1</a>
-    <a href="#s8"><b>08</b> ТЗ ч.2</a>
-    <a href="#s9"><b>09</b> Кандидат</a>
-    <a href="#s10"><b>10</b> HR</a>
-    <a href="#s11"><b>11</b> Руководитель</a>
-    <a href="#s12"><b>12</b> Админ</a>
-    <a href="#s13"><b>13</b> AI-резюме</a>
-    <a href="#s14"><b>14</b> СТД-Р</a>
-    <a href="#s15"><b>15</b> Kanban</a>
-    <a href="#s16"><b>16</b> LiveKit + TG</a>
-    <a href="#s17"><b>17</b> Безопасность</a>
-    <a href="#s18"><b>18</b> Качество</a>
-    <a href="#s19"><b>19</b> Спасибо</a>
+    <a href="#s7"><b>07</b> Сервисы</a>
+    <a href="#s8"><b>08</b> ТЗ ч.1</a>
+    <a href="#s9"><b>09</b> ТЗ ч.2</a>
+    <a href="#s10"><b>10</b> Кандидат</a>
+    <a href="#s11"><b>11</b> HR</a>
+    <a href="#s12"><b>12</b> Руководитель</a>
+    <a href="#s13"><b>13</b> Админ</a>
+    <a href="#s14"><b>14</b> AI-резюме</a>
+    <a href="#s15"><b>15</b> СТД-Р</a>
+    <a href="#s16"><b>16</b> Kanban</a>
+    <a href="#s17"><b>17</b> LiveKit + TG</a>
+    <a href="#s18"><b>18</b> Безопасность</a>
+    <a href="#s19"><b>19</b> Качество</a>
+    <a href="#s20"><b>20</b> Спасибо</a>
   </div>
 </details>
 
@@ -396,7 +397,42 @@
 
 <!-- 7 -->
 <section class="slide" id="s7">
-  <div class="slide-header"><span class="sn">07</span><span class="tag">ТЗ · часть 1</span></div>
+  <div class="slide-header"><span class="sn">07</span><span class="tag">Docker Compose</span></div>
+  <h3>Сервисы и оркестрация</h3>
+  <div class="time">⏱ 45 сек · технари оценят — говори уверенно</div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">🗣</span>Что сказать</div>
+    <div class="say">
+      <p>Вся инфраструктура описана в <em>docker-compose.yml</em> — поднимается одной командой, никаких ручных шагов. Шесть контейнеров, каждый со своей ответственностью.</p>
+      <p>Зависимости выстроены через <em>depends_on + condition: service_healthy</em> — backend стартует только после того, как postgres и minio прошли healthcheck. Это исключает ошибки «база ещё не готова».</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">📦</span>Сервисы кратко</div>
+    <ul class="points">
+      <li><b>frontend :5173</b> — Vue 3 SPA, Vite, DOMPurify</li>
+      <li><b>backend :8000</b> — FastAPI async, JWT, 15+ роутеров, WebSocket</li>
+      <li><b>postgres :5433</b> — PG 16-alpine, asyncpg, Alembic, healthcheck pg_isready</li>
+      <li><b>minio :9000/:9001</b> — S3-совместимый storage, minio-init создаёт бакет</li>
+      <li><b>livekit :7880-7881</b> — self-hosted WebRTC, UDP 50100–50200</li>
+      <li><b>telegram-bot</b> — внешний API, единая шина уведомлений</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <div class="block-title"><span class="ic">⚠️</span>Возможный вопрос</div>
+    <div class="qa">
+      <div class="q">Почему не Kubernetes?</div>
+      <div class="a">MVP для хакатона — Docker Compose оптимален по скорости развёртывания. Переход на K8s понятен: stateless backend горизонтально масштабируется, Redis pub/sub заменяет in-memory WS registry.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide" id="s8">
+  <div class="slide-header"><span class="sn">08</span><span class="tag">ТЗ · часть 1</span></div>
   <h3>Соответствие ТЗ — функционал</h3>
   <div class="time">⏱ 40 сек</div>
 
@@ -418,9 +454,9 @@
   </div>
 </section>
 
-<!-- 8 -->
-<section class="slide" id="s8">
-  <div class="slide-header"><span class="sn">08</span><span class="tag">ТЗ · часть 2</span></div>
+<!-- 9 -->
+<section class="slide" id="s9">
+  <div class="slide-header"><span class="sn">09</span><span class="tag">ТЗ · часть 2</span></div>
   <h3>Соответствие ТЗ — нефункциональные</h3>
   <div class="time">⏱ 40 сек</div>
 
@@ -438,9 +474,9 @@
   </div>
 </section>
 
-<!-- 9 -->
-<section class="slide" id="s9">
-  <div class="slide-header"><span class="sn">09</span><span class="tag">Сценарий · Кандидат</span></div>
+<!-- 10 -->
+<section class="slide" id="s10">
+  <div class="slide-header"><span class="sn">10</span><span class="tag">Сценарий · Кандидат</span></div>
   <h3>Путь кандидата</h3>
   <div class="time">⏱ 35 сек · показывай скриншот или демо</div>
 
@@ -463,9 +499,9 @@
   </div>
 </section>
 
-<!-- 10 -->
-<section class="slide" id="s10">
-  <div class="slide-header"><span class="sn">10</span><span class="tag">Сценарий · HR</span></div>
+<!-- 11 -->
+<section class="slide" id="s11">
+  <div class="slide-header"><span class="sn">11</span><span class="tag">Сценарий · HR</span></div>
   <h3>Рабочий стол HR</h3>
   <div class="time">⏱ 40 сек</div>
 
@@ -488,9 +524,9 @@
   </div>
 </section>
 
-<!-- 11 -->
-<section class="slide" id="s11">
-  <div class="slide-header"><span class="sn">11</span><span class="tag">Сценарий · Руководитель</span></div>
+<!-- 12 -->
+<section class="slide" id="s12">
+  <div class="slide-header"><span class="sn">12</span><span class="tag">Сценарий · Руководитель</span></div>
   <h3>Руководитель в найме</h3>
   <div class="time">⏱ 30 сек</div>
 
@@ -511,9 +547,9 @@
   </div>
 </section>
 
-<!-- 12 -->
-<section class="slide" id="s12">
-  <div class="slide-header"><span class="sn">12</span><span class="tag">Сценарий · Админ</span></div>
+<!-- 13 -->
+<section class="slide" id="s13">
+  <div class="slide-header"><span class="sn">13</span><span class="tag">Сценарий · Админ</span></div>
   <h3>Админ-центр</h3>
   <div class="time">⏱ 25 сек</div>
 
@@ -534,9 +570,9 @@
   </div>
 </section>
 
-<!-- 13 -->
-<section class="slide" id="s13">
-  <div class="slide-header"><span class="sn">13</span><span class="tag">Killer · AI</span></div>
+<!-- 14 -->
+<section class="slide" id="s14">
+  <div class="slide-header"><span class="sn">14</span><span class="tag">Killer · AI</span></div>
   <h3>AI-Конструктор резюме</h3>
   <div class="time">⏱ 45 сек · это «вау»-фича, не торопись</div>
 
@@ -558,9 +594,9 @@
   </div>
 </section>
 
-<!-- 14 -->
-<section class="slide" id="s14">
-  <div class="slide-header"><span class="sn">14</span><span class="tag">Killer · Госуслуги</span></div>
+<!-- 15 -->
+<section class="slide" id="s15">
+  <div class="slide-header"><span class="sn">15</span><span class="tag">Killer · Госуслуги</span></div>
   <h3>Импорт выписки СТД-Р</h3>
   <div class="time">⏱ 35 сек</div>
 
@@ -583,9 +619,9 @@
   </div>
 </section>
 
-<!-- 15 -->
-<section class="slide" id="s15">
-  <div class="slide-header"><span class="sn">15</span><span class="tag">Killer · Real-time</span></div>
+<!-- 16 -->
+<section class="slide" id="s16">
+  <div class="slide-header"><span class="sn">16</span><span class="tag">Killer · Real-time</span></div>
   <h3>Real-time Kanban</h3>
   <div class="time">⏱ 30 сек · покажи в двух окнах если успеешь</div>
 
@@ -598,9 +634,9 @@
   </div>
 </section>
 
-<!-- 16 -->
-<section class="slide" id="s16">
-  <div class="slide-header"><span class="sn">16</span><span class="tag">Killer · LiveKit + TG</span></div>
+<!-- 17 -->
+<section class="slide" id="s17">
+  <div class="slide-header"><span class="sn">17</span><span class="tag">Killer · LiveKit + TG</span></div>
   <h3>LiveKit и Telegram Synergy</h3>
   <div class="time">⏱ 40 сек</div>
 
@@ -621,9 +657,9 @@
   </div>
 </section>
 
-<!-- 17 -->
-<section class="slide" id="s17">
-  <div class="slide-header"><span class="sn">17</span><span class="tag">Безопасность</span></div>
+<!-- 18 -->
+<section class="slide" id="s18">
+  <div class="slide-header"><span class="sn">18</span><span class="tag">Безопасность</span></div>
   <h3>Hardening: что защитили</h3>
   <div class="time">⏱ 45 сек · любимый вопрос жюри</div>
 
@@ -649,9 +685,9 @@
   </div>
 </section>
 
-<!-- 18 -->
-<section class="slide" id="s18">
-  <div class="slide-header"><span class="sn">18</span><span class="tag">Качество</span></div>
+<!-- 19 -->
+<section class="slide" id="s19">
+  <div class="slide-header"><span class="sn">19</span><span class="tag">Качество</span></div>
   <h3>Качество кода и результат</h3>
   <div class="time">⏱ 30 сек</div>
 
@@ -674,9 +710,9 @@
   </div>
 </section>
 
-<!-- 19 -->
-<section class="slide" id="s19">
-  <div class="slide-header"><span class="sn">19</span><span class="tag">Финал</span></div>
+<!-- 20 -->
+<section class="slide" id="s20">
+  <div class="slide-header"><span class="sn">20</span><span class="tag">Финал</span></div>
   <h3>Спасибо!</h3>
   <div class="time">⏱ 10 сек · улыбнись, пауза, приглашение к вопросам</div>
 

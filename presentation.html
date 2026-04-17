@@ -770,6 +770,40 @@
   .erd-field .type { color: var(--text-muted); }
   .erd-field.fk { color: var(--accent); font-weight: 500; }
 
+  /* Inline code in cards */
+  .card code {
+    font-family: ui-monospace, 'Menlo', 'Consolas', monospace;
+    font-size: 12px;
+    background: var(--elevated);
+    border: 1px solid var(--border-soft);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+
+  /* Service cards */
+  .svc-badge {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; letter-spacing: 0.04em;
+    color: #fff; flex-shrink: 0;
+  }
+  .svc-port {
+    font-family: ui-monospace, 'Menlo', monospace;
+    font-size: 11px; font-weight: 500;
+    color: var(--text-muted); margin-top: 2px;
+  }
+  .svc-card p { margin: 0; font-size: 13px; color: var(--text-sec); line-height: 1.5; }
+  .svc-name { font-size: 16px; font-weight: 700; color: var(--text); }
+  .dep-chain {
+    margin-top: 16px; padding: 14px 18px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  }
+  .dep-chain h4 {
+    margin: 0 0 10px; font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted);
+  }
+
   @media (max-width: 1200px) {
     .slide { padding: 40px 60px 60px; }
     h1.slide-title { font-size: 36px; }
@@ -806,24 +840,44 @@
         <div class="card-num">01</div>
         <h3>Разрозненность</h3>
         <p>Excel для учёта, почта для писем, Zoom для интервью. Данные не сшиты, контекст теряется на стыке.</p>
+        <ul>
+          <li>Нет единого профиля кандидата</li>
+          <li>HR переключает 4–6 вкладок за день</li>
+          <li>Статус кандидата — только в голове</li>
+        </ul>
         <div class="solution-chip"><b>→ HireFlow:</b> единое окно с ролевой моделью, Kanban, чатом и LiveKit</div>
       </div>
       <div class="card">
         <div class="card-num">02</div>
         <h3>Ручной ввод</h3>
         <p>Опыт работы, сертификаты, справки — заполняются руками часами. Кандидаты бросают формы.</p>
+        <ul>
+          <li>Форма резюме — 20+ полей вручную</li>
+          <li>Конверсия падает на каждом шаге</li>
+          <li>Ошибки при ручном переносе из документов</li>
+        </ul>
         <div class="solution-chip"><b>→ HireFlow:</b> импорт выписки СТД-Р за 10 секунд + AI-конструктор резюме</div>
       </div>
       <div class="card">
         <div class="card-num">03</div>
         <h3>Потеря истории</h3>
         <p>Кто и когда менял статус, какие были отзывы, кто видел резюме — вопросы без ответов.</p>
+        <ul>
+          <li>Решения принимаются по памяти, не по данным</li>
+          <li>При увольнении HR — история теряется</li>
+          <li>Нет полного контекста при повторном найме</li>
+        </ul>
         <div class="solution-chip"><b>→ HireFlow:</b> audit log, история статусов с авторами и датами, notes</div>
       </div>
       <div class="card">
         <div class="card-num">04</div>
         <h3>Молчание</h3>
         <p>Кандидат неделями не знает результата. HR забывает ответить. HR-бренд страдает.</p>
+        <ul>
+          <li>Отказ без ответа — топ жалоб кандидатов</li>
+          <li>HR-бренд падает → дороже привлекать людей</li>
+          <li>Ручные письма — непоследовательны и медленны</li>
+        </ul>
         <div class="solution-chip"><b>→ HireFlow:</b> WebSocket + Telegram: мгновенные уведомления всем сторонам</div>
       </div>
     </div>
@@ -842,21 +896,45 @@
         <div class="card-num">RBAC</div>
         <h3>Чёткие права</h3>
         <p>Четыре роли, жёсткая ролевая модель, IDOR-защита на уровне запросов.</p>
+        <ul>
+          <li><code>require_role()</code> декоратором на каждом роуте</li>
+          <li>IDOR-фильтр через SQL JOIN по <code>manager_id</code></li>
+          <li>JWT в заголовке <code>Authorization</code>, не в cookie</li>
+          <li>Блокировка через <code>is_active = false</code></li>
+        </ul>
       </div>
       <div class="card accent">
         <div class="card-num">RT</div>
         <h3>Real-time</h3>
         <p>WebSocket + Telegram-бот. Kanban обновляется без F5, уведомления — мгновенно.</p>
+        <ul>
+          <li>WebSocket-соединение на каждого пользователя</li>
+          <li>Единый <code>notifications.py</code> — один вызов → WS + TG</li>
+          <li>Kanban drag-and-drop синхронизирует всех HR</li>
+          <li>История переходов: кто, когда, из какой стадии</li>
+        </ul>
       </div>
       <div class="card accent">
         <div class="card-num">AI</div>
         <h3>AI-ассистент</h3>
         <p>Gemini генерирует резюме и парсит выписку с Госуслуг — без галлюцинаций.</p>
+        <ul>
+          <li>Multi-model fallback: 2.5-flash → 1.5-flash → 1.5-pro</li>
+          <li>Потоковый SSE-ответ (streaming), не ждёшь финала</li>
+          <li>pdfplumber парсит таблицы СТД-Р за ~10 сек</li>
+          <li>DOMPurify санитизирует AI-вывод от XSS</li>
+        </ul>
       </div>
       <div class="card accent">
         <div class="card-num">LK</div>
         <h3>Встроенное видео</h3>
         <p>Интервью через LiveKit прямо в карточке — без Zoom и Teams.</p>
+        <ul>
+          <li>Self-hosted LiveKit в Docker-сети, данные не уходят</li>
+          <li>Токен выдаёт backend через <code>/api/livekit</code></li>
+          <li>WebRTC peer-to-peer, UDP 50100–50200</li>
+          <li>Видеозвонок стартует из карточки кандидата</li>
+        </ul>
       </div>
     </div>
   </section>
@@ -1054,10 +1132,116 @@
     </div>
   </section>
 
-  <!-- 7. TZ matrix 1 -->
+  <!-- 7. Services -->
   <section class="slide">
     <div class="slide-head">
       <span class="slide-num">07</span>
+      <span class="slide-tag">Docker Compose</span>
+    </div>
+    <h1 class="slide-title">Сервисы и оркестрация</h1>
+    <p class="slide-sub">6 контейнеров — одна команда <code style="font-family:ui-monospace,monospace;background:var(--elevated);padding:3px 8px;border-radius:6px;font-size:16px">docker compose up -d</code>. Зависимости через <code style="font-family:ui-monospace,monospace;background:var(--elevated);padding:3px 8px;border-radius:6px;font-size:16px">depends_on + healthcheck</code>.</p>
+    <div class="grid grid-3" style="flex:1;min-height:0;">
+      <div class="card svc-card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <span class="svc-badge" style="background:#6366F1">FE</span>
+          <div><div class="svc-name">frontend</div><div class="svc-port">:5173</div></div>
+        </div>
+        <p>Vue 3 SPA · Vite hot-reload · Pinia · Tailwind · DOMPurify</p>
+        <ul>
+          <li>vue-draggable-plus — Kanban drag-and-drop</li>
+          <li>Pinia stores: auth, candidate, vacancy, chat</li>
+          <li>DOMPurify на AI-выводе, Vue эскейпит по умолчанию</li>
+          <li>Lucide иконки — 0 внешних ассетов</li>
+        </ul>
+      </div>
+      <div class="card svc-card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <span class="svc-badge" style="background:#10B981">BE</span>
+          <div><div class="svc-name">backend</div><div class="svc-port">:8000</div></div>
+        </div>
+        <p>FastAPI · async · 15+ роутеров · JWT · RBAC · WebSocket · Alembic</p>
+        <ul>
+          <li>Async event loop, asyncpg connection pool</li>
+          <li>Сервис-слой: notifications, s3, ai, telegram, pdf</li>
+          <li>CSP / HSTS / X-Frame-Options middleware</li>
+          <li>Swagger UI на <code>/docs</code>, OpenAPI автогенерация</li>
+        </ul>
+      </div>
+      <div class="card svc-card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <span class="svc-badge" style="background:#3B82F6">PG</span>
+          <div><div class="svc-name">postgres</div><div class="svc-port">:5433</div></div>
+        </div>
+        <p>PostgreSQL 16-alpine · asyncpg · 15+ таблиц · healthcheck pg_isready</p>
+        <ul>
+          <li>Alembic миграции, seed: 15 юзеров / 6 вакансий</li>
+          <li>Каскадные FK, индексы на user_id / vacancy_id</li>
+          <li>Healthcheck interval 5s, retries 10</li>
+          <li>Named volume <code>postgres_data</code></li>
+        </ul>
+      </div>
+      <div class="card svc-card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <span class="svc-badge" style="background:#F59E0B">S3</span>
+          <div><div class="svc-name">minio</div><div class="svc-port">:9000 · :9001 console</div></div>
+        </div>
+        <p>S3-совместимый storage · резюме и документы · minio-init создаёт бакет</p>
+        <ul>
+          <li>Бакет <code>resumes</code> с public-read политикой</li>
+          <li>Presigned URL для безопасной загрузки</li>
+          <li>minio-init — отдельный init-контейнер</li>
+          <li>API-совместим с AWS S3 — миграция без кода</li>
+        </ul>
+      </div>
+      <div class="card svc-card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <span class="svc-badge" style="background:#8B5CF6">RTC</span>
+          <div><div class="svc-name">livekit</div><div class="svc-port">:7880–7881 · UDP 50100–50200</div></div>
+        </div>
+        <p>Self-hosted WebRTC сервер · токен выдаёт backend · видео без Zoom</p>
+        <ul>
+          <li>Конфиг <code>livekit.yaml</code> с API-ключом</li>
+          <li>Токен выдаётся на 1 час через <code>/api/livekit</code></li>
+          <li>Персональные данные не покидают инфраструктуру</li>
+          <li>--dev режим, легко переключить на prod</li>
+        </ul>
+      </div>
+      <div class="card svc-card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <span class="svc-badge" style="background:#EF4444">TG</span>
+          <div><div class="svc-name">telegram-bot</div><div class="svc-port">external API</div></div>
+        </div>
+        <p>Единая шина уведомлений · один вызов → WebSocket + Telegram · опционально</p>
+        <ul>
+          <li>httpx async, не блокирует event loop</li>
+          <li>4 типа: интервью / статус / запрос / фидбек</li>
+          <li>TG ID привязывается в настройках профиля</li>
+          <li>Работает без Telegram — WS-канал всегда активен</li>
+        </ul>
+      </div>
+    </div>
+    <div class="dep-chain">
+      <h4>Порядок старта (depends_on + condition: service_healthy)</h4>
+      <div class="chain">
+        <span class="chain-item accent">postgres ✓</span>
+        <span class="chain-arrow">→</span>
+        <span class="chain-item accent">minio ✓</span>
+        <span class="chain-arrow">→</span>
+        <span class="chain-item">backend</span>
+        <span class="chain-arrow">+</span>
+        <span class="chain-item">minio-init</span>
+        <span class="chain-arrow">||</span>
+        <span class="chain-item">frontend</span>
+        <span class="chain-arrow">||</span>
+        <span class="chain-item">livekit</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. TZ matrix 1 -->
+  <section class="slide">
+    <div class="slide-head">
+      <span class="slide-num">08</span>
       <span class="slide-tag">ТЗ · функциональные требования</span>
     </div>
     <h1 class="slide-title">Соответствие ТЗ — часть 1</h1>
@@ -1111,7 +1295,7 @@
   <!-- 8. TZ matrix 2 -->
   <section class="slide">
     <div class="slide-head">
-      <span class="slide-num">08</span>
+      <span class="slide-num">09</span>
       <span class="slide-tag">ТЗ · функциональные + нефункциональные</span>
     </div>
     <h1 class="slide-title">Соответствие ТЗ — часть 2</h1>
@@ -1179,7 +1363,7 @@
   <!-- 9. Scenario: Candidate -->
   <section class="slide">
     <div class="slide-head">
-      <span class="slide-num">09</span>
+      <span class="slide-num">10</span>
       <span class="slide-tag">Сценарий · Кандидат</span>
     </div>
     <h1 class="slide-title">Путь кандидата</h1>
@@ -1218,7 +1402,7 @@
   <!-- 10. Scenario: HR -->
   <section class="slide">
     <div class="slide-head">
-      <span class="slide-num">10</span>
+      <span class="slide-num">11</span>
       <span class="slide-tag">Сценарий · HR</span>
     </div>
     <h1 class="slide-title">Рабочий стол HR</h1>
@@ -1257,7 +1441,7 @@
   <!-- 11. Scenario: Manager -->
   <section class="slide">
     <div class="slide-head">
-      <span class="slide-num">11</span>
+      <span class="slide-num">12</span>
       <span class="slide-tag">Сценарий · Руководитель</span>
     </div>
     <h1 class="slide-title">Руководитель в найме</h1>
@@ -1296,7 +1480,7 @@
   <!-- 12. Scenario: Admin -->
   <section class="slide">
     <div class="slide-head">
-      <span class="slide-num">12</span>
+      <span class="slide-num">13</span>
       <span class="slide-tag">Сценарий · Администратор</span>
     </div>
     <h1 class="slide-title">Админ-центр</h1>
@@ -1344,7 +1528,7 @@
   <!-- 13. Feature: AI Constructor -->
   <section class="slide">
     <div class="slide-head">
-      <span class="slide-num">13</span>
+      <span class="slide-num">14</span>
       <span class="slide-tag">Killer feature · 1</span>
     </div>
     <h1 class="slide-title">AI-Конструктор резюме</h1>
@@ -1377,7 +1561,7 @@
   <!-- 14. Feature: Gosuslugi -->
   <section class="slide">
     <div class="slide-head">
-      <span class="slide-num">14</span>
+      <span class="slide-num">15</span>
       <span class="slide-tag">Killer feature · 2</span>
     </div>
     <h1 class="slide-title">Импорт выписки СТД-Р с Госуслуг</h1>
@@ -1418,7 +1602,7 @@
   <!-- 15. Feature: Real-time Kanban -->
   <section class="slide">
     <div class="slide-head">
-      <span class="slide-num">15</span>
+      <span class="slide-num">16</span>
       <span class="slide-tag">Killer feature · 3</span>
     </div>
     <h1 class="slide-title">Real-time Kanban для найма</h1>
@@ -1451,7 +1635,7 @@
   <!-- 16. Feature: LiveKit + Telegram -->
   <section class="slide">
     <div class="slide-head">
-      <span class="slide-num">16</span>
+      <span class="slide-num">17</span>
       <span class="slide-tag">Killer feature · 4</span>
     </div>
     <h1 class="slide-title">LiveKit и Telegram Synergy</h1>
@@ -1484,7 +1668,7 @@
   <!-- 17. Security -->
   <section class="slide">
     <div class="slide-head">
-      <span class="slide-num">17</span>
+      <span class="slide-num">18</span>
       <span class="slide-tag">Безопасность · ТЗ 5.2</span>
     </div>
     <h1 class="slide-title">Hardening: что защитили</h1>
@@ -1532,7 +1716,7 @@
   <!-- 18. Code quality + results -->
   <section class="slide">
     <div class="slide-head">
-      <span class="slide-num">18</span>
+      <span class="slide-num">19</span>
       <span class="slide-tag">Итоги · метрики</span>
     </div>
     <h1 class="slide-title">Качество кода и что сделано</h1>
