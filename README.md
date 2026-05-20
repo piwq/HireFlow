@@ -223,21 +223,11 @@ docker exec hakaton-ural-backend-1 ruff check app/
 ```
 
 ---
-
-## Roadmap
-
-- [ ] SSO через Госуслуги (ESIA)
-- [ ] Redis pub/sub для WebSocket в horizontal scale
-- [ ] Покрытие pytest 80%+
-- [ ] Мобильный клиент (OpenAPI-контракт готов)
-- [ ] Публикация OpenAPI в отдельный SDK-пакет
-- [ ] Более гибкий конструктор scorecard (сейчас фиксированные 4 критерия)
-
 ---
 
 ## Лицензия
 
-MIT — см. [LICENSE](LICENSE) *(или укажите вашу лицензию перед публикацией)*.
+MIT — см. [LICENSE](LICENSE).
 
 ---
 
